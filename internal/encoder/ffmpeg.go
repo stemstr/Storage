@@ -43,8 +43,13 @@ func (e *ffmpegEncoder) Encode(ctx context.Context, req EncodeRequest) (EncodeRe
 	var args []string
 	switch strings.ToLower(req.InputType) {
 	case
+		// .wav
 		"audio/wav", "audio/wave", "audio/x-wav",
+		// .mp3
 		"audio/mp3", "audio/mpeg", "audio/x-mpeg-3", "audio/mpeg3",
+		// .m4a
+		"audio/mp4", "audio/m4a",
+		// .aif
 		"audio/aiff", "audio/x-aiff":
 		args = defaultArgs(e.opts, req.InputPath, req.OutputDir, req.OutputName)
 	default:

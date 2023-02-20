@@ -24,6 +24,7 @@ func TestFFMPEGEncode(t *testing.T) {
 	}{
 		{"audio/aiff", "./testdata/test.aif", outputDir, "testaif"},
 		{"audio/mp3", "./testdata/test.mp3", outputDir, "testmp3"},
+		{"audio/mp4", "./testdata/test.m4a", outputDir, "testm4a"},
 		{"audio/wave", "./testdata/test.wav", outputDir, "testwav"},
 	}
 
