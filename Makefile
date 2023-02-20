@@ -6,3 +6,7 @@ run:
 clean:
 	docker compose kill || true
 	docker compose rm -f || true
+
+.PHONY: test
+test:
+	go test -v ./...
