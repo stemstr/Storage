@@ -22,4 +22,5 @@ type EncodeRequest struct {
 
 type EncodeResponse struct {
 	Output string
+	Path   string
 }

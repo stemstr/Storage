@@ -1,0 +1,24 @@
+port: 9001
+api_path: http://localhost:9001/upload
+media_path: http://localhost:9001
+nostr_relay: ws://relay:9000
+accepted_mimetypes:
+  - audio/wav
+  - audio/wave
+  - audio/x-wav
+  - audio/mp3
+  - audio/mpeg
+  - audio/mpeg3
+  - audio/x-mpeg-3
+  - audio/mp4
+  - audio/m4a
+  - audio/aiff
+  - audio/x-aiff
+storage_type: filesystem
+storage_config:
+  media_dir: ./files
+max_upload_size_mb: 1
+stream_config:
+  media_dir: ./streams
+  ffmpeg: /usr/bin/ffmpeg
+  chunk_size_seconds: 5

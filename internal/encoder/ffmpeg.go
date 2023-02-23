@@ -10,19 +10,11 @@ import (
 	"strings"
 )
 
-// New returns a new ffmpeg Encoder
-func New(binPath string, opts *encodeOpts) Encoder {
-	if opts == nil {
-		opts = &encodeOpts{
-			ChunkSizeSeconds: 10,
-			Codec:            "libmp3lame",
-			Bitrate:          "128k",
-		}
-	}
-
+// newFfmpeg returns a new ffmpeg Encoder
+func newFfmpeg(binPath string, opts encodeOpts) Encoder {
 	return &ffmpegEncoder{
 		bin:  binPath,
-		opts: *opts,
+		opts: opts,
 	}
 }
 
@@ -68,6 +60,7 @@ func (e *ffmpegEncoder) Encode(ctx context.Context, req EncodeRequest) (EncodeRe
 
 	return EncodeResponse{
 		Output: out.String(),
+		Path:   filepath.Join(req.OutputDir, req.OutputName+".m3u8"),
 	}, nil
 }
 

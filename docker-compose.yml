@@ -1,16 +1,18 @@
 version: "3.9"
 services:
-  nostr-relay:
+  api:
+    build: "."
+    command: "-config /config/api-config.yml"
+    ports:
+      - "9001:9001"
+    volumes:
+      - ./config:/config
+    depends_on:
+      - relay
+  relay:
     image: scsibug/nostr-rs-relay
     ports:
       - "9000:9000"
     volumes:
       - ./data:/usr/src/app/db
       - ./config/relay-config.toml:/usr/src/app/config.toml
-  media-server:
-    image: "bndw/nostr-media-server:poc-stream"
-    command: "-config /config/media-config.yml"
-    ports:
-      - "9001:9001"
-    volumes:
-      - ./config:/config

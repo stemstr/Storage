@@ -1,5 +1,5 @@
 bin/
+curls/
 data/
 files/
 streams/
-**/testdata/output/*
