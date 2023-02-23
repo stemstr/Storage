@@ -30,7 +30,7 @@ func TestFFMPEGEncode(t *testing.T) {
 
 	var (
 		ctx = context.Background()
-		enc = New(ffmpegPath, &encodeOpts{
+		enc = newFfmpeg(ffmpegPath, encodeOpts{
 			ChunkSizeSeconds: 10,
 			Codec:            "libmp3lame",
 			Bitrate:          "128k",
