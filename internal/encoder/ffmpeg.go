@@ -60,7 +60,7 @@ func (e *ffmpegEncoder) Encode(ctx context.Context, req EncodeRequest) (EncodeRe
 
 	return EncodeResponse{
 		Output: out.String(),
-		Path:   filepath.Join(req.OutputDir, req.OutputName+".m3u8"),
+		Path:   filepath.Join(req.OutputName + ".m3u8"),
 	}, nil
 }
 

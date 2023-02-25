@@ -14,8 +14,6 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-
-	"github.com/stemstr/storage/internal/storage"
 )
 
 type handlers struct {
@@ -26,15 +24,14 @@ type handlers struct {
 	StreamRoute string
 }
 
-// handleGetMedia fetches stored media
-func (h *handlers) handleGetMedia(w http.ResponseWriter, r *http.Request) {
+// handleDownloadMedia fetches stored media
+func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	var (
-		ctx  = r.Context()
-		sum  = chi.URLParam(r, "sum")
-		name = chi.URLParam(r, "name")
+		ctx = r.Context()
+		sum = chi.URLParam(r, "sum")
 	)
 
-	f, err := h.Store.Get(ctx, sum, name)
+	f, err := h.Store.Get(ctx, sum)
 	if err != nil {
 		log.Printf("err: store.Get: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -103,7 +100,7 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Get the signed event
 
-	fileName, fileBytes, err := h.getMedia(r)
+	_, fileBytes, err := h.getMedia(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -135,11 +132,7 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 		sum = fmt.Sprintf("%x", sha256.Sum256(fileBytes))
 	)
 
-	relPath, err := h.Store.Save(ctx, bytes.NewReader(fileBytes), storage.Options{
-		Filename: fileName,
-		Sha256:   sum,
-	})
-	if err != nil {
+	if err := h.Store.Save(ctx, bytes.NewReader(fileBytes), sum); err != nil {
 		log.Printf("err: store.Save: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -154,8 +147,8 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	downloadPath, _ := url.JoinPath(h.Config.MediaPath, relPath)
-	streamPath, _ := url.JoinPath(h.Config.MediaPath, streamFile)
+	downloadPath, _ := url.JoinPath(h.Config.MediaPath, sum)
+	streamPath, _ := url.JoinPath(h.Config.MediaPath, h.StreamRoute, streamFile)
 
 	// TODO: Only do this after async encoder pool has completed
 	// h.Relay.Publish(ctx, event)

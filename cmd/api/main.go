@@ -71,6 +71,7 @@ func main() {
 		log.Printf("must set stream_config.media_dir")
 		os.Exit(1)
 	}
+
 	const streamRoute = "/stream"
 
 	h := handlers{
@@ -86,8 +87,7 @@ func main() {
 	r.Use(cors.AllowAll().Handler)
 	r.Use(metricsMiddleware)
 
-	r.Get("/{sum}/{name}", h.handleGetMedia)
-	r.Get("/{sum}", h.handleGetMedia)
+	r.Get("/download/{sum}", h.handleDownloadMedia)
 	r.Get("/upload/quote", h.handleGetQuote)
 	r.Post("/upload", h.handleUploadMedia)
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
