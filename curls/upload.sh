@@ -45,7 +45,7 @@ sleep 1
 _=$(curl \
   -F "pk=$pk" \
   -F "size=$size" \
+  -F "sum=$sum" \
   -F "event=$base64SignedEvent" \
-  -F "filename=$fn" \
   -F "file=@$fn" \
   "${HOST}/upload")

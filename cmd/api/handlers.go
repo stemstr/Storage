@@ -100,52 +100,34 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 // handleUploadMedia stores the provided media
 func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxUploadSizeMB*1024*1024)
-	payload, err := h.getMedia(r)
+	upload, err := h.parseUploadRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	valid, err := payload.Event.CheckSignature()
-	if err != nil || !valid {
-		http.Error(w, "err: event signature invalid", http.StatusBadRequest)
-		return
-	}
-
-	var (
-		contentType = http.DetectContentType(payload.Data)
-		accepted    = false
-	)
-	if len(h.Config.AcceptedMimetypes) == 0 {
-		// No explicit accepted mimetypes, allow all.
-		accepted = true
-	} else {
-		for _, mime := range h.Config.AcceptedMimetypes {
-			if strings.EqualFold(contentType, mime) {
-				accepted = true
-				break
-			}
-		}
-	}
-	if !accepted {
-		msg := fmt.Sprintf("unaccepted content mimetype %q", contentType)
-		http.Error(w, msg, http.StatusBadRequest)
+	if err := h.validateUpload(upload); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	var (
 		ctx = r.Context()
-		sum = fmt.Sprintf("%x", sha256.Sum256(payload.Data))
+		sum = upload.ShaSum()
 	)
 
-	if err := h.Store.Save(ctx, bytes.NewReader(payload.Data), sum); err != nil {
+	err = h.Store.Save(ctx, bytes.NewReader(upload.Data), sum)
+	if err != nil {
 		log.Printf("err: store.Save: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// TODO: Move encoding into async worker pool.
-	filePath := filepath.Join("./files", sum, "data")
+	var (
+		filePath    = filepath.Join("./files", sum, "data")
+		contentType = upload.ContentType
+	)
 	_, err = h.Encoder.EncodeMP3(ctx, filePath, contentType, sum)
 	if err != nil {
 		log.Printf("err: encodeMP3: %v", err)
@@ -154,7 +136,7 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Only do this after async encoder pool has completed
-	_ = h.Relay.Publish(ctx, payload.Event)
+	_ = h.Relay.Publish(ctx, upload.Event)
 
 	uploadCounter.Inc()
 
@@ -162,12 +144,19 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 type uploadRequest struct {
-	Pubkey string
-	Event  nostr.Event
-	Data   []byte
+	Pubkey      string
+	Event       nostr.Event
+	Size        int
+	Sum         string
+	ContentType string
+	Data        []byte
 }
 
-func (h *handlers) getMedia(r *http.Request) (*uploadRequest, error) {
+func (r *uploadRequest) ShaSum() string {
+	return fmt.Sprintf("%x", sha256.Sum256(r.Data))
+}
+
+func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 	err := r.ParseMultipartForm(h.Config.MaxUploadSizeMB * 1024 * 1024)
 	if err != nil {
 		return nil, err
@@ -176,6 +165,18 @@ func (h *handlers) getMedia(r *http.Request) (*uploadRequest, error) {
 	pk := r.Form.Get("pk")
 	if pk == "" {
 		return nil, fmt.Errorf("must provide pk field")
+	}
+	sizeStr := r.Form.Get("size")
+	if sizeStr == "" {
+		return nil, fmt.Errorf("must provide size field")
+	}
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil {
+		return nil, fmt.Errorf("size field must be an int")
+	}
+	sum := r.Form.Get("sum")
+	if sum == "" {
+		return nil, fmt.Errorf("must provide sum field")
 	}
 
 	eventStr := r.Form.Get("event")
@@ -198,11 +199,44 @@ func (h *handlers) getMedia(r *http.Request) (*uploadRequest, error) {
 		return nil, err
 	}
 
+	contentType := http.DetectContentType(fileBytes)
+
 	return &uploadRequest{
-		Pubkey: pk,
-		Event:  *event,
-		Data:   fileBytes,
+		Pubkey:      pk,
+		Event:       *event,
+		Size:        size,
+		Sum:         sum,
+		ContentType: contentType,
+		Data:        fileBytes,
 	}, nil
+}
+
+func (h *handlers) validateUpload(payload *uploadRequest) error {
+	valid, err := payload.Event.CheckSignature()
+	if err != nil || !valid {
+		return fmt.Errorf("err: event signature invalid")
+	}
+
+	var (
+		contentType = http.DetectContentType(payload.Data)
+		accepted    = false
+	)
+	if len(h.Config.AcceptedMimetypes) == 0 {
+		// No explicit accepted mimetypes, allow all.
+		accepted = true
+	} else {
+		for _, mime := range h.Config.AcceptedMimetypes {
+			if strings.EqualFold(contentType, mime) {
+				accepted = true
+				break
+			}
+		}
+	}
+	if !accepted {
+		return fmt.Errorf("unaccepted content mimetype %q", contentType)
+	}
+
+	return nil
 }
 
 func fileServer(r chi.Router, path string, root http.FileSystem) {
