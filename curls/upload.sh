@@ -24,7 +24,7 @@ echo "shasum: $sum"
 sleep 1
 
 # Get a quote and grab the returned event
-event=$(curl -s "${HOST}/upload/quote?pk=${pk}&size=${size}&sig=${sum}" | jq '.event')
+event=$(curl -s "${HOST}/upload/quote?pk=${pk}&size=${size}&sum=${sum}" | jq '.event')
 
 echo "received event to sign"
 sleep 1

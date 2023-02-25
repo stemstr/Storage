@@ -56,7 +56,7 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	var (
 		pubkey   = r.URL.Query().Get("pk")
 		fileSize = r.URL.Query().Get("size")
-		sum      = r.URL.Query().Get("sig")
+		sum      = r.URL.Query().Get("sum")
 	)
 
 	if pubkey == "" {
