@@ -23,8 +23,20 @@ echo "filesize: $size"
 echo "shasum: $sum"
 sleep 1
 
+quoteData() {
+  cat <<EOF
+{
+  "pk":"$pk",
+  "size":$size,
+  "sum":"$sum",
+  "desc":"and anotha one",
+  "tags":["hiphop","funky"]
+}
+EOF
+}
+
 # Get a quote and grab the returned event
-event=$(curl -s "${HOST}/upload/quote?pk=${pk}&size=${size}&sum=${sum}" | jq '.event')
+event=$(curl -s -XPOST -H "Content-Type: application/json" -d "$(quoteData)" "${HOST}/upload/quote" | jq '.event')
 
 echo "received event to sign"
 sleep 1
@@ -37,6 +49,9 @@ id=$(echo $sign | awk '{ print $2 }')
 sig=$(echo $sign | awk '{ print $4 }')
 signedEvent=$(echo $event | jq '.sig = "'$sig'" | .id = "'$id'"')
 base64SignedEvent=$(echo $signedEvent | jq -c . | base64)
+
+echo "event id: $id"
+echo "event sig: $sig"
 
 echo "uploading $fn"
 sleep 1

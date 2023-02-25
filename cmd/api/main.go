@@ -92,7 +92,7 @@ func main() {
 	r.Use(metricsMiddleware)
 
 	r.Get("/download/{sum}", h.handleDownloadMedia)
-	r.Get("/upload/quote", h.handleGetQuote)
+	r.Post("/upload/quote", h.handleGetQuote)
 	r.Post("/upload", h.handleUploadMedia)
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 

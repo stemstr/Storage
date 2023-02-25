@@ -45,29 +45,37 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	downloadCounter.Inc()
-	w.Header().Set("Content-Type", http.DetectContentType(fileBytes))
+	w.Header().Set("Content-Type", detectContentType(fileBytes))
 	w.Header().Set("Content-Length", strconv.Itoa(len(fileBytes)))
 	w.Write(fileBytes)
 }
 
+type getQuoteRequest struct {
+	Pubkey   string   `json:"pk"`
+	Filesize int      `json:"size"`
+	Sum      string   `json:"sum"`
+	Desc     string   `json:"desc"`
+	Tags     []string `json:"tags"`
+}
+
 // handleGetQuote returns an upload quote
 func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
-	var (
-		pubkey   = r.URL.Query().Get("pk")
-		fileSize = r.URL.Query().Get("size")
-		sum      = r.URL.Query().Get("sum")
-	)
+	var req getQuoteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "unable to parse request", http.StatusBadRequest)
+		return
+	}
 
-	if pubkey == "" {
-		http.Error(w, "pk param required", http.StatusBadRequest)
+	if req.Pubkey == "" {
+		http.Error(w, "pk field required", http.StatusBadRequest)
 		return
 	}
-	if fileSize == "" {
-		http.Error(w, "size param required", http.StatusBadRequest)
+	if req.Filesize == 0 {
+		http.Error(w, "size field required", http.StatusBadRequest)
 		return
 	}
-	if sum == "" {
-		http.Error(w, "sig param required", http.StatusBadRequest)
+	if req.Sum == "" {
+		http.Error(w, "sum field required", http.StatusBadRequest)
 		return
 	}
 
@@ -76,10 +84,10 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 
 	// We bake the final stream and download urls into the event so we must
 	// calculate them now, before the file is actually uploaded.
-	streamPath, _ := url.JoinPath(h.Config.StreamBase, sum+".m3u8")
-	downloadPath, _ := url.JoinPath(h.Config.DownloadBase, sum)
+	streamPath, _ := url.JoinPath(h.Config.StreamBase, req.Sum+".m3u8")
+	downloadPath, _ := url.JoinPath(h.Config.DownloadBase, req.Sum)
 
-	event := newAudioEvent(pubkey, streamPath, downloadPath)
+	event := newAudioEvent(req.Pubkey, req.Desc, req.Tags, streamPath, downloadPath)
 
 	data, err := json.Marshal(map[string]any{
 		"invoice": "",
@@ -198,7 +206,7 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 		return nil, err
 	}
 
-	contentType := http.DetectContentType(fileBytes)
+	contentType := detectContentType(fileBytes)
 
 	return &uploadRequest{
 		Pubkey:      pk,
@@ -217,7 +225,7 @@ func (h *handlers) validateUpload(payload *uploadRequest) error {
 	}
 
 	var (
-		contentType = http.DetectContentType(payload.Data)
+		contentType = detectContentType(payload.Data)
 		accepted    = false
 	)
 	if len(h.Config.AcceptedMimetypes) == 0 {
@@ -255,4 +263,8 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func detectContentType(data []byte) string {
+	return http.DetectContentType(data)
 }

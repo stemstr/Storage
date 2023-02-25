@@ -23,11 +23,13 @@ func connectToRelay(ctx context.Context, url string) (*nostr.Relay, error) {
 	return nostr.RelayConnect(ctx, url)
 }
 
-func newAudioEvent(pk, streamURL, downloadURL string) nostr.Event {
+func newAudioEvent(pk, desc string, tags []string, streamURL, downloadURL string) nostr.Event {
 	data, _ := json.Marshal(struct {
-		StreamURL   string `json:"stream_url"`
-		DownloadURL string `json:"download_url"`
-	}{streamURL, downloadURL})
+		Tags        []string `json:"tags"`
+		Desc        string   `json:"desc"`
+		StreamURL   string   `json:"stream_url"`
+		DownloadURL string   `json:"download_url"`
+	}{tags, desc, streamURL, downloadURL})
 
 	return nostr.Event{
 		PubKey:    pk,
