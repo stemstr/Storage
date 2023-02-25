@@ -100,12 +100,15 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 // handleUploadMedia stores the provided media
 func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxUploadSizeMB*1024*1024)
-
-	// TODO: Get the signed event
-
 	payload, err := h.getMedia(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	valid, err := payload.Event.CheckSignature()
+	if err != nil || !valid {
+		http.Error(w, "err: event signature invalid", http.StatusBadRequest)
 		return
 	}
 
@@ -153,21 +156,9 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 	// TODO: Only do this after async encoder pool has completed
 	_ = h.Relay.Publish(ctx, payload.Event)
 
-	data, err := json.Marshal(map[string]any{
-		"data":    map[string]any{},
-		"success": true,
-		"status":  200,
-	})
-	if err != nil {
-		log.Printf("failed to marshal upload response: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	uploadCounter.Inc()
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write(data)
 }
 
 type uploadRequest struct {
