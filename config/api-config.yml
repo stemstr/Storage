@@ -1,6 +1,7 @@
 port: 9001
 api_path: http://localhost:9001/upload
-media_path: http://localhost:9001
+stream_base: http://localhost:9001/stream
+download_base: http://localhost:9001/download
 nostr_relay: ws://relay:9000
 accepted_mimetypes:
   - audio/wav

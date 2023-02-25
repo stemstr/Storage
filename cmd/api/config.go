@@ -15,7 +15,8 @@ const (
 
 type Config struct {
 	APIPath           string            `yaml:"api_path" envconfig:"API_PATH"`
-	MediaPath         string            `yaml:"media_path" envconfig:"MEDIA_PATH"`
+	DownloadBase      string            `yaml:"download_base" envconfig:"DOWNLOAD_BASE"`
+	StreamBase        string            `yaml:"stream_base" envconfig:"STREAM_BASE"`
 	AcceptedMimetypes []string          `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
 	Port              int               `yaml:"port" envconfig:"PORT"`
 	StorageType       string            `yaml:"storage_type" envconfig:"STORAGE_TYPE"`

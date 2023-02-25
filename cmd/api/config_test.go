@@ -17,7 +17,8 @@ func TestLoadConfigFromFile(t *testing.T) {
 	_, err = configFile.Write([]byte(`
 port: 9000
 api_path: http://localhost:9000/upload
-media_path: http://localhost:9000
+download_base: http://localhost:9000/download
+stream_base: http://localhost:9000/stream
 accepted_mimetypes:
   - image/jpg
   - image/png
@@ -32,7 +33,8 @@ storage_config:
 	assert.NoError(t, err)
 	assert.Equal(t, 9000, cfg.Port)
 	assert.Equal(t, "http://localhost:9000/upload", cfg.APIPath)
-	assert.Equal(t, "http://localhost:9000", cfg.MediaPath)
+	assert.Equal(t, "http://localhost:9000/download", cfg.DownloadBase)
+	assert.Equal(t, "http://localhost:9000/stream", cfg.StreamBase)
 	assert.Equal(t, []string{"image/jpg", "image/png"}, cfg.AcceptedMimetypes)
 	assert.Equal(t, "filesystem", cfg.StorageType)
 }
@@ -40,7 +42,8 @@ storage_config:
 func TestLoadConfigFromEnv(t *testing.T) {
 	t.Setenv("PORT", "9000")
 	t.Setenv("API_PATH", "http://localhost:9000/upload")
-	t.Setenv("MEDIA_PATH", "http://localhost:9000")
+	t.Setenv("DOWNLOAD_BASE", "http://localhost:9000/download")
+	t.Setenv("STREAM_BASE", "http://localhost:9000/stream")
 	t.Setenv("ACCEPTED_MIMETYPES", "image/jpg,image/png")
 	t.Setenv("STORAGE_TYPE", "filesystem")
 	t.Setenv("STORAGE_CONFIG", "media_dir:./files")
@@ -49,7 +52,8 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	assert.NoError(t, cfg.LoadFromEnv())
 	assert.Equal(t, 9000, cfg.Port)
 	assert.Equal(t, "http://localhost:9000/upload", cfg.APIPath)
-	assert.Equal(t, "http://localhost:9000", cfg.MediaPath)
+	assert.Equal(t, "http://localhost:9000/download", cfg.DownloadBase)
+	assert.Equal(t, "http://localhost:9000/stream", cfg.StreamBase)
 	assert.Equal(t, []string{"image/jpg", "image/png"}, cfg.AcceptedMimetypes)
 	assert.Equal(t, "filesystem", cfg.StorageType)
 }

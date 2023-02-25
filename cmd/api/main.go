@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/go-chi/chi/v5"
@@ -71,15 +72,18 @@ func main() {
 		log.Printf("must set stream_config.media_dir")
 		os.Exit(1)
 	}
-
-	const streamRoute = "/stream"
+	streamURL, err := url.Parse(cfg.StreamBase)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	streamRoute := streamURL.Path
 
 	h := handlers{
-		Config:      cfg,
-		Store:       store,
-		Encoder:     enc,
-		Relay:       relay,
-		StreamRoute: streamRoute,
+		Config:  cfg,
+		Store:   store,
+		Encoder: enc,
+		Relay:   relay,
 	}
 
 	r := chi.NewRouter()

@@ -42,10 +42,10 @@ echo "uploading $fn"
 sleep 1
 
 # Upload
-_=$(curl \
+curl \
   -F "pk=$pk" \
   -F "size=$size" \
   -F "sum=$sum" \
   -F "event=$base64SignedEvent" \
   -F "file=@$fn" \
-  "${HOST}/upload")
+  "${HOST}/upload"

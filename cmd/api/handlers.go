@@ -18,11 +18,10 @@ import (
 )
 
 type handlers struct {
-	Config      Config
-	Store       storageProvider
-	Encoder     encoderProvider
-	Relay       nostrProvider
-	StreamRoute string
+	Config  Config
+	Store   storageProvider
+	Encoder encoderProvider
+	Relay   nostrProvider
 }
 
 // handleDownloadMedia fetches stored media
@@ -77,8 +76,8 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 
 	// We bake the final stream and download urls into the event so we must
 	// calculate them now, before the file is actually uploaded.
-	streamPath, _ := url.JoinPath(h.Config.MediaPath, h.StreamRoute, sum+".m3u8")
-	downloadPath, _ := url.JoinPath(h.Config.MediaPath, sum)
+	streamPath, _ := url.JoinPath(h.Config.StreamBase, sum+".m3u8")
+	downloadPath, _ := url.JoinPath(h.Config.DownloadBase, sum)
 
 	event := newAudioEvent(pubkey, streamPath, downloadPath)
 
