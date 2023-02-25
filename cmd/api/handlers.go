@@ -14,8 +14,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-
-	"github.com/stemstr/storage/internal/storage"
+	"github.com/nbd-wtf/go-nostr"
 )
 
 type handlers struct {
@@ -26,15 +25,14 @@ type handlers struct {
 	StreamRoute string
 }
 
-// handleGetMedia fetches stored media
-func (h *handlers) handleGetMedia(w http.ResponseWriter, r *http.Request) {
+// handleDownloadMedia fetches stored media
+func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	var (
-		ctx  = r.Context()
-		sum  = chi.URLParam(r, "sum")
-		name = chi.URLParam(r, "name")
+		ctx = r.Context()
+		sum = chi.URLParam(r, "sum")
 	)
 
-	f, err := h.Store.Get(ctx, sum, name)
+	f, err := h.Store.Get(ctx, sum)
 	if err != nil {
 		log.Printf("err: store.Get: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -58,7 +56,7 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	var (
 		pubkey   = r.URL.Query().Get("pk")
 		fileSize = r.URL.Query().Get("size")
-		fileHash = r.URL.Query().Get("sig")
+		sum      = r.URL.Query().Get("sig")
 	)
 
 	if pubkey == "" {
@@ -69,7 +67,7 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "size param required", http.StatusBadRequest)
 		return
 	}
-	if fileHash == "" {
+	if sum == "" {
 		http.Error(w, "sig param required", http.StatusBadRequest)
 		return
 	}
@@ -77,10 +75,12 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	// TODO: Calculate price
 	// TODO: Create invoice
 
-	// We bake the final stream url into the event so we must
-	// calculate it now, before it's actually uploaded.
-	streamPath, _ := url.JoinPath(h.Config.MediaPath, h.StreamRoute, fileHash+".m3u8")
-	event := newAudioEvent(pubkey, streamPath)
+	// We bake the final stream and download urls into the event so we must
+	// calculate them now, before the file is actually uploaded.
+	streamPath, _ := url.JoinPath(h.Config.MediaPath, h.StreamRoute, sum+".m3u8")
+	downloadPath, _ := url.JoinPath(h.Config.MediaPath, sum)
+
+	event := newAudioEvent(pubkey, streamPath, downloadPath)
 
 	data, err := json.Marshal(map[string]any{
 		"invoice": "",
@@ -103,14 +103,14 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Get the signed event
 
-	fileName, fileBytes, err := h.getMedia(r)
+	payload, err := h.getMedia(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	var (
-		contentType = http.DetectContentType(fileBytes)
+		contentType = http.DetectContentType(payload.Data)
 		accepted    = false
 	)
 	if len(h.Config.AcceptedMimetypes) == 0 {
@@ -132,14 +132,10 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		ctx = r.Context()
-		sum = fmt.Sprintf("%x", sha256.Sum256(fileBytes))
+		sum = fmt.Sprintf("%x", sha256.Sum256(payload.Data))
 	)
 
-	relPath, err := h.Store.Save(ctx, bytes.NewReader(fileBytes), storage.Options{
-		Filename: fileName,
-		Sha256:   sum,
-	})
-	if err != nil {
+	if err := h.Store.Save(ctx, bytes.NewReader(payload.Data), sum); err != nil {
 		log.Printf("err: store.Save: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -147,24 +143,18 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 
 	// TODO: Move encoding into async worker pool.
 	filePath := filepath.Join("./files", sum, "data")
-	streamFile, err := h.Encoder.EncodeMP3(ctx, filePath, contentType, sum)
+	_, err = h.Encoder.EncodeMP3(ctx, filePath, contentType, sum)
 	if err != nil {
 		log.Printf("err: encodeMP3: %v", err)
 		http.Error(w, "please try again later", http.StatusInternalServerError)
 		return
 	}
 
-	downloadPath, _ := url.JoinPath(h.Config.MediaPath, relPath)
-	streamPath, _ := url.JoinPath(h.Config.MediaPath, streamFile)
-
 	// TODO: Only do this after async encoder pool has completed
-	// h.Relay.Publish(ctx, event)
+	_ = h.Relay.Publish(ctx, payload.Event)
 
 	data, err := json.Marshal(map[string]any{
-		"data": map[string]any{
-			"download_url": downloadPath,
-			"stream_url":   streamPath,
-		},
+		"data":    map[string]any{},
 		"success": true,
 		"status":  200,
 	})
@@ -175,32 +165,53 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uploadCounter.Inc()
+
+	w.WriteHeader(http.StatusCreated)
 	w.Write(data)
 }
 
-func (h *handlers) getMedia(r *http.Request) (string, []byte, error) {
+type uploadRequest struct {
+	Pubkey string
+	Event  nostr.Event
+	Data   []byte
+}
+
+func (h *handlers) getMedia(r *http.Request) (*uploadRequest, error) {
 	err := r.ParseMultipartForm(h.Config.MaxUploadSizeMB * 1024 * 1024)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
-	fileName := r.Form.Get("filename")
-	if fileName == "" {
-		return "", nil, fmt.Errorf("must provide filename field")
+	pk := r.Form.Get("pk")
+	if pk == "" {
+		return nil, fmt.Errorf("must provide pk field")
+	}
+
+	eventStr := r.Form.Get("event")
+	if eventStr == "" {
+		return nil, fmt.Errorf("must provide event field")
+	}
+	event, err := parseEncodedEvent(eventStr)
+	if err != nil {
+		return nil, fmt.Errorf("must provide valid event field")
 	}
 
 	f, _, err := r.FormFile("file")
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 	defer f.Close()
 
 	fileBytes, err := ioutil.ReadAll(f)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
-	return fileName, fileBytes, nil
+	return &uploadRequest{
+		Pubkey: pk,
+		Event:  *event,
+		Data:   fileBytes,
+	}, nil
 }
 
 func fileServer(r chi.Router, path string, root http.FileSystem) {
