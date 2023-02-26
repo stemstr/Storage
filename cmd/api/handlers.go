@@ -272,9 +272,15 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 }
 
 func detectContentType(data []byte, fileName *string) string {
-	if fileName != nil && strings.HasSuffix(*fileName, ".m4a") {
-		// http.DetectContentType will return "vidio/mp4" for MPEG-4 audio
-		return "audio/mp4"
+	if fileName != nil {
+		switch {
+		case strings.HasSuffix(*fileName, ".m4a"):
+			// http.DetectContentType will return "vidio/mp4" for MPEG-4 audio
+			return "audio/mp4"
+		case strings.HasSuffix(*fileName, ".mp3"):
+			// http.DetectContentType will return "application/octet-stream" for some MP3's
+			return "audio/mp3"
+		}
 	}
 
 	return http.DetectContentType(data)
