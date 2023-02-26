@@ -18,7 +18,7 @@ accepted_mimetypes:
 storage_type: filesystem
 storage_config:
   media_dir: ./files
-max_upload_size_mb: 1
+max_upload_size_mb: 2
 stream_config:
   media_dir: ./streams
   ffmpeg: /usr/bin/ffmpeg

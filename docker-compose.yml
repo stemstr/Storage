@@ -3,10 +3,11 @@ services:
   api:
     build: "."
     command: "-config /config/api-config.yml"
+    restart: on-failure:5
     ports:
       - "9001:9001"
     volumes:
-      - ./config:/config
+      - ./local:/config
     depends_on:
       - relay
   relay:
@@ -14,5 +15,5 @@ services:
     ports:
       - "9000:9000"
     volumes:
-      - ./data:/usr/src/app/db
-      - ./config/relay-config.toml:/usr/src/app/config.toml
+      - ./local/data:/usr/src/app/db
+      - ./local/relay-config.toml:/usr/src/app/config.toml
