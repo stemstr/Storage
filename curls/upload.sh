@@ -62,5 +62,6 @@ curl \
   -F "size=$size" \
   -F "sum=$sum" \
   -F "event=$base64SignedEvent" \
+  -F "fileName=$fn" \
   -F "file=@$fn" \
   "${HOST}/upload"

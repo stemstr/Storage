@@ -45,7 +45,7 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	downloadCounter.Inc()
-	w.Header().Set("Content-Type", detectContentType(fileBytes))
+	w.Header().Set("Content-Type", detectContentType(fileBytes, nil))
 	w.Header().Set("Content-Length", strconv.Itoa(len(fileBytes)))
 	w.Write(fileBytes)
 }
@@ -156,6 +156,7 @@ type uploadRequest struct {
 	Size        int
 	Sum         string
 	ContentType string
+	FileName    string
 	Data        []byte
 }
 
@@ -185,6 +186,10 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 	if sum == "" {
 		return nil, fmt.Errorf("must provide sum field")
 	}
+	fileName := r.Form.Get("fileName")
+	if fileName == "" {
+		return nil, fmt.Errorf("must provide fileName field")
+	}
 
 	eventStr := r.Form.Get("event")
 	if eventStr == "" {
@@ -206,7 +211,7 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 		return nil, err
 	}
 
-	contentType := detectContentType(fileBytes)
+	contentType := detectContentType(fileBytes, &fileName)
 
 	return &uploadRequest{
 		Pubkey:      pk,
@@ -214,6 +219,7 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 		Size:        size,
 		Sum:         sum,
 		ContentType: contentType,
+		FileName:    fileName,
 		Data:        fileBytes,
 	}, nil
 }
@@ -225,7 +231,7 @@ func (h *handlers) validateUpload(payload *uploadRequest) error {
 	}
 
 	var (
-		contentType = detectContentType(payload.Data)
+		contentType = detectContentType(payload.Data, &payload.FileName)
 		accepted    = false
 	)
 	if len(h.Config.AcceptedMimetypes) == 0 {
@@ -265,6 +271,11 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 	})
 }
 
-func detectContentType(data []byte) string {
+func detectContentType(data []byte, fileName *string) string {
+	if fileName != nil && strings.HasSuffix(*fileName, ".m4a") {
+		// http.DetectContentType will return "vidio/mp4" for MPEG-4 audio
+		return "audio/mp4"
+	}
+
 	return http.DetectContentType(data)
 }
