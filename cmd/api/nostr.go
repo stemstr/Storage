@@ -10,11 +10,6 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
-const (
-	// TODO: Determine custom event kind to use
-	audioEventKind = 10666
-)
-
 type nostrProvider interface {
 	Publish(context.Context, nostr.Event) nostr.Status
 }
@@ -24,19 +19,19 @@ func connectToRelay(ctx context.Context, url string) (*nostr.Relay, error) {
 }
 
 func newAudioEvent(pk, desc string, tags []string, streamURL, downloadURL string) nostr.Event {
-	data, _ := json.Marshal(struct {
-		Tags        []string `json:"tags"`
-		Desc        string   `json:"desc"`
-		StreamURL   string   `json:"stream_url"`
-		DownloadURL string   `json:"download_url"`
-	}{tags, desc, streamURL, downloadURL})
-
+	var hashTags nostr.Tags
+	for _, tag := range tags {
+		hashTags = append(hashTags, []string{"t", tag})
+	}
 	return nostr.Event{
 		PubKey:    pk,
 		CreatedAt: time.Now(),
-		Kind:      audioEventKind,
-		Tags:      nil,
-		Content:   string(data),
+		Kind:      nostr.KindTextNote,
+		Tags: append(hashTags,
+			nostr.Tag{"stream_url", streamURL},
+			nostr.Tag{"download_url", downloadURL},
+		),
+		Content: desc,
 	}
 }
 
