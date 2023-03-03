@@ -24,6 +24,7 @@ type Config struct {
 	StreamConfig      map[string]string `yaml:"stream_config" envconfig:"STREAM_CONFIG"`
 	MaxUploadSizeMB   int64             `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
 	NostrRelay        string            `yaml:"nostr_relay" envconfig:"NOSTR_RELAY"`
+	QuoteDB           string            `yaml:"quote_db" envconfig:"QUOTE_DB"`
 }
 
 // Load Config from a yaml file at path.
