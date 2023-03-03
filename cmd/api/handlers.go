@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nbd-wtf/go-nostr"
@@ -52,6 +53,46 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", detectContentType(fileBytes, nil))
 	w.Header().Set("Content-Length", strconv.Itoa(len(fileBytes)))
 	w.Write(fileBytes)
+}
+
+// handlePostEvent proxies an event to the relay.
+func (h *handlers) handlePostEvent(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var req struct {
+		ID        string     `json:"id"`
+		PubKey    string     `json:"pubkey"`
+		CreatedAt int        `json:"created_at"`
+		Kind      int        `json:"kind"`
+		Tags      [][]string `json:"tags"`
+		Content   string     `json:"content"`
+		Sig       string     `json:"sig"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "unable to parse request", http.StatusBadRequest)
+		return
+	}
+
+	createdAt := time.Unix(int64(req.CreatedAt), 0)
+
+	event := nostr.Event{
+		ID:        req.ID,
+		PubKey:    req.PubKey,
+		CreatedAt: createdAt,
+		Kind:      req.Kind,
+		Tags:      parseTags(req.Tags),
+		Content:   req.Content,
+		Sig:       req.Sig,
+	}
+
+	valid, err := event.CheckSignature()
+	if err != nil || !valid {
+		http.Error(w, "invalid event", http.StatusBadRequest)
+		return
+	}
+
+	_ = h.Relay.Publish(ctx, event)
+	w.WriteHeader(http.StatusOK)
 }
 
 type getQuoteRequest struct {

@@ -30,3 +30,16 @@ func parseEncodedEvent(e string) (*nostr.Event, error) {
 
 	return &event, nil
 }
+
+func parseTags(tags [][]string) nostr.Tags {
+	var t nostr.Tags
+	for _, plainTag := range tags {
+		var tag nostr.Tag
+		for _, tv := range plainTag {
+			tag = append(tag, tv)
+		}
+
+		t = append(t, tag)
+	}
+	return t
+}
