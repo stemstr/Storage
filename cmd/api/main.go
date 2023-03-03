@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/stemstr/storage/internal/encoder"
+	quotes "github.com/stemstr/storage/internal/quotestore"
 	"github.com/stemstr/storage/internal/storage/file"
 )
 
@@ -79,11 +80,18 @@ func main() {
 	}
 	streamRoute := streamURL.Path
 
+	quoteDB, err := quotes.New(cfg.QuoteDB)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
 	h := handlers{
 		Config:  cfg,
 		Store:   store,
 		Encoder: enc,
 		Relay:   relay,
+		QuoteDB: quoteDB,
 	}
 
 	r := chi.NewRouter()

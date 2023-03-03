@@ -21,5 +21,5 @@ build-api:
 
 # run runs the server with a config file
 .PHONY: run-api
-run-api: build
+run-api: build-api
 	./bin/api -config local/api-config.yml

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nbd-wtf/go-nostr"
+
+	quotes "github.com/stemstr/storage/internal/quotestore"
 )
 
 type handlers struct {
@@ -22,6 +25,7 @@ type handlers struct {
 	Store   storageProvider
 	Encoder encoderProvider
 	Relay   nostrProvider
+	QuoteDB quoteDBProvider
 }
 
 // handleDownloadMedia fetches stored media
@@ -51,15 +55,16 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 type getQuoteRequest struct {
-	Pubkey   string   `json:"pk"`
-	Filesize int      `json:"size"`
-	Sum      string   `json:"sum"`
-	Desc     string   `json:"desc"`
-	Tags     []string `json:"tags"`
+	Pubkey   string `json:"pk"`
+	Filesize int    `json:"size"`
+	Sum      string `json:"sum"`
+	Desc     string `json:"desc"`
 }
 
 // handleGetQuote returns an upload quote
 func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var req getQuoteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "unable to parse request", http.StatusBadRequest)
@@ -82,16 +87,26 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	// TODO: Calculate price
 	// TODO: Create invoice
 
+	quote, err := h.QuoteDB.Create(ctx, &quotes.Request{
+		Pubkey:      req.Pubkey,
+		ContentHash: req.Sum,
+		ContentSize: req.Filesize,
+	})
+	if err != nil {
+		http.Error(w, "failed to create quote", http.StatusInternalServerError)
+		return
+	}
+
 	// We bake the final stream and download urls into the event so we must
 	// calculate them now, before the file is actually uploaded.
 	streamPath, _ := url.JoinPath(h.Config.StreamBase, req.Sum+".m3u8")
 	downloadPath, _ := url.JoinPath(h.Config.DownloadBase, req.Sum)
 
-	event := newAudioEvent(req.Pubkey, req.Desc, req.Tags, streamPath, downloadPath)
-
 	data, err := json.Marshal(map[string]any{
-		"invoice": "",
-		"event":   event,
+		"invoice":      "",
+		"quote_id":     quote.ID,
+		"stream_url":   streamPath,
+		"download_url": downloadPath,
 	})
 
 	if err != nil {
@@ -106,22 +121,22 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 
 // handleUploadMedia stores the provided media
 func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, h.Config.MaxUploadSizeMB*1024*1024)
+
 	upload, err := h.parseUploadRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	sum := upload.ShaSum()
 
-	if err := h.validateUpload(upload); err != nil {
+	quote, err := h.validateUpload(ctx, upload)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	var (
-		ctx = r.Context()
-		sum = upload.ShaSum()
-	)
+	fmt.Printf("got quote: %#v\n", *quote)
 
 	err = h.Store.Save(ctx, bytes.NewReader(upload.Data), sum)
 	if err != nil {
@@ -155,6 +170,7 @@ type uploadRequest struct {
 	Event       nostr.Event
 	Size        int
 	Sum         string
+	QuoteID     string
 	ContentType string
 	FileName    string
 	Data        []byte
@@ -190,6 +206,10 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 	if fileName == "" {
 		return nil, fmt.Errorf("must provide fileName field")
 	}
+	quoteID := r.Form.Get("quoteId")
+	if quoteID == "" {
+		return nil, fmt.Errorf("must provide quoteId field")
+	}
 
 	eventStr := r.Form.Get("event")
 	if eventStr == "" {
@@ -218,16 +238,31 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 		Event:       *event,
 		Size:        size,
 		Sum:         sum,
+		QuoteID:     quoteID,
 		ContentType: contentType,
 		FileName:    fileName,
 		Data:        fileBytes,
 	}, nil
 }
 
-func (h *handlers) validateUpload(payload *uploadRequest) error {
+func (h *handlers) validateUpload(ctx context.Context, payload *uploadRequest) (*quotes.Quote, error) {
+	quote, err := h.QuoteDB.Get(ctx, payload.QuoteID)
+	if err != nil {
+		return nil, err
+	}
+	if payload.Pubkey != quote.Pubkey {
+		return nil, fmt.Errorf("err: pubkey invalid")
+	}
+	if payload.Sum != quote.ContentHash {
+		return nil, fmt.Errorf("err: sum invalid")
+	}
+	if payload.Size != quote.ContentSize {
+		return nil, fmt.Errorf("err: size invalid")
+	}
+
 	valid, err := payload.Event.CheckSignature()
 	if err != nil || !valid {
-		return fmt.Errorf("err: event signature invalid")
+		return nil, fmt.Errorf("err: event signature invalid")
 	}
 
 	var (
@@ -246,10 +281,10 @@ func (h *handlers) validateUpload(payload *uploadRequest) error {
 		}
 	}
 	if !accepted {
-		return fmt.Errorf("unaccepted content mimetype %q", contentType)
+		return nil, fmt.Errorf("unaccepted content mimetype %q", contentType)
 	}
 
-	return nil
+	return quote, nil
 }
 
 func fileServer(r chi.Router, path string, root http.FileSystem) {

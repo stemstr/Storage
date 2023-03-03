@@ -28,22 +28,42 @@ quoteData() {
 {
   "pk":"$pk",
   "size":$size,
-  "sum":"$sum",
-  "desc":"and anotha one",
-  "tags":["hiphop","funky"]
+  "sum":"$sum"
 }
 EOF
 }
 
-# Get a quote and grab the returned event
-event=$(curl -s -XPOST -H "Content-Type: application/json" -d "$(quoteData)" "${HOST}/upload/quote" | jq '.event')
+event() {
+	stream_url=$1
+	download_url=$1
+  cat <<EOF
+{
+    "id": "",
+    "pubkey": "000005f8bc46b589ace6db0c6f7cf8b1b88dc55595886976e53bbd91423e267e",
+    "created_at": 1677376043,
+    "kind": 1,
+    "tags": [
+      ["t","hiphop"],
+      ["t","funky"],
+      ["stream_url","$stream_url"],
+      ["download_url","$download_url"]
+    ],
+    "content": "and anotha one",
+    "sig": ""
+  }
+EOF
+}
 
-echo "received event to sign"
+# Get a quote and grab the returned event
+quote_id=$(curl -s -XPOST -H "Content-Type: application/json" -d "$(quoteData)" "${HOST}/upload/quote" | jq '.quote_id')
+
+echo "creating event"
 sleep 1
 echo "signing..."
 sleep 1
 
 # Sign the event
+event=$(event)
 sign=$(noscl sign "$event")
 id=$(echo $sign | awk '{ print $2 }')
 sig=$(echo $sign | awk '{ print $4 }')
@@ -61,6 +81,7 @@ curl \
   -F "pk=$pk" \
   -F "size=$size" \
   -F "sum=$sum" \
+  -F "quoteId=$quote_id" \
   -F "event=$base64SignedEvent" \
   -F "fileName=$fn" \
   -F "file=@$fn" \
