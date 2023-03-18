@@ -23,4 +23,4 @@ stream_config:
   media_dir: ./streams
   ffmpeg: /usr/bin/ffmpeg
   chunk_size_seconds: 5
-quote_db: quotes.db
+db_file: /config/sqlite.db

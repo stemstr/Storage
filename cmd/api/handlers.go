@@ -18,7 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/nbd-wtf/go-nostr"
 
-	quotes "github.com/stemstr/storage/internal/quotestore"
+	db "github.com/stemstr/storage/internal/db/sqlite"
 )
 
 type handlers struct {
@@ -26,7 +26,7 @@ type handlers struct {
 	Store   storageProvider
 	Encoder encoderProvider
 	Relay   nostrProvider
-	QuoteDB quoteDBProvider
+	DB      db.DB
 }
 
 // handleDownloadMedia fetches stored media
@@ -97,7 +97,7 @@ func (h *handlers) handlePostEvent(w http.ResponseWriter, r *http.Request) {
 
 type getQuoteRequest struct {
 	Pubkey   string `json:"pk"`
-	Filesize int    `json:"size"`
+	Filesize int64  `json:"size"`
 	Sum      string `json:"sum"`
 	Desc     string `json:"desc"`
 }
@@ -126,12 +126,31 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Calculate price
-	// TODO: Create invoice
+	sats := int64(0)
+	// TODO: Create LN invoice
+	lnProvider := "fixme_some_ln_provider"
+	paymentHash := "fixme_rhash"
 
-	quote, err := h.QuoteDB.Create(ctx, &quotes.Request{
-		Pubkey:      req.Pubkey,
-		ContentHash: req.Sum,
-		ContentSize: req.Filesize,
+	// Create invoice
+	invoice, err := h.DB.CreateInvoice(ctx, db.CreateInvoiceRequest{
+		PaymentHash: paymentHash,
+		Paid:        false,
+		Sats:        sats,
+		Provider:    lnProvider,
+		CreatedBy:   req.Pubkey,
+	})
+	if err != nil {
+		log.Printf("error: create invoice: %v", err)
+		http.Error(w, "failed to create invoice", http.StatusInternalServerError)
+		return
+	}
+
+	// Create Media record
+	media, err := h.DB.CreateMedia(ctx, db.CreateMediaRequest{
+		InvoiceID: invoice.ID,
+		Size:      req.Filesize,
+		Sum:       req.Sum,
+		CreatedBy: req.Pubkey,
 	})
 	if err != nil {
 		http.Error(w, "failed to create quote", http.StatusInternalServerError)
@@ -140,12 +159,13 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 
 	// We bake the final stream and download urls into the event so we must
 	// calculate them now, before the file is actually uploaded.
-	streamPath, _ := url.JoinPath(h.Config.StreamBase, req.Sum+".m3u8")
-	downloadPath, _ := url.JoinPath(h.Config.DownloadBase, req.Sum)
+	streamPath, _ := url.JoinPath(h.Config.StreamBase, media.Sum+".m3u8")
+	downloadPath, _ := url.JoinPath(h.Config.DownloadBase, media.Sum)
 
 	data, err := json.Marshal(map[string]any{
-		"invoice":      "",
-		"quote_id":     quote.ID,
+		"invoice": "",
+		// TODO: rename to invoice_id?
+		"quote_id":     invoice.ID,
 		"stream_url":   streamPath,
 		"download_url": downloadPath,
 	})
@@ -172,12 +192,12 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	sum := upload.ShaSum()
 
-	quote, err := h.validateUpload(ctx, upload)
+	invoice, media, err := h.validateUpload(ctx, upload)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("got quote: %#v\n", *quote)
+	fmt.Printf("got invoice: %#v media: %#v\n", *invoice, *media)
 
 	err = h.Store.Save(ctx, bytes.NewReader(upload.Data), sum)
 	if err != nil {
@@ -209,7 +229,7 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 type uploadRequest struct {
 	Pubkey      string
 	Event       nostr.Event
-	Size        int
+	Size        int64
 	Sum         string
 	QuoteID     string
 	ContentType string
@@ -235,7 +255,7 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 	if sizeStr == "" {
 		return nil, fmt.Errorf("must provide size field")
 	}
-	size, err := strconv.Atoi(sizeStr)
+	size, err := strconv.ParseInt(sizeStr, 10, 64)
 	if err != nil {
 		return nil, fmt.Errorf("size field must be an int")
 	}
@@ -286,24 +306,33 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*uploadRequest, error) {
 	}, nil
 }
 
-func (h *handlers) validateUpload(ctx context.Context, payload *uploadRequest) (*quotes.Quote, error) {
-	quote, err := h.QuoteDB.Get(ctx, payload.QuoteID)
+func (h *handlers) validateUpload(ctx context.Context, payload *uploadRequest) (*db.Invoice, *db.Media, error) {
+	// TODO: tx
+	invoice, err := h.DB.GetInvoice(ctx, payload.QuoteID)
 	if err != nil {
-		return nil, err
+		log.Printf("error: get invoice: %v", err)
+		return nil, nil, err
 	}
-	if payload.Pubkey != quote.Pubkey {
-		return nil, fmt.Errorf("err: pubkey invalid")
+
+	media, err := h.DB.GetMediaByInvoice(ctx, invoice.ID)
+	if err != nil {
+		log.Printf("error: get media: %v", err)
+		return nil, nil, err
 	}
-	if payload.Sum != quote.ContentHash {
-		return nil, fmt.Errorf("err: sum invalid")
+
+	if payload.Pubkey != invoice.CreatedBy {
+		return nil, nil, fmt.Errorf("err: pubkey invalid")
 	}
-	if payload.Size != quote.ContentSize {
-		return nil, fmt.Errorf("err: size invalid")
+	if payload.Sum != media.Sum {
+		return nil, nil, fmt.Errorf("err: sum invalid")
+	}
+	if payload.Size != media.Size {
+		return nil, nil, fmt.Errorf("err: size invalid")
 	}
 
 	valid, err := payload.Event.CheckSignature()
 	if err != nil || !valid {
-		return nil, fmt.Errorf("err: event signature invalid")
+		return nil, nil, fmt.Errorf("err: event signature invalid")
 	}
 
 	var (
@@ -322,10 +351,10 @@ func (h *handlers) validateUpload(ctx context.Context, payload *uploadRequest) (
 		}
 	}
 	if !accepted {
-		return nil, fmt.Errorf("unaccepted content mimetype %q", contentType)
+		return nil, nil, fmt.Errorf("unaccepted content mimetype %q", contentType)
 	}
 
-	return quote, nil
+	return invoice, media, nil
 }
 
 func fileServer(r chi.Router, path string, root http.FileSystem) {
