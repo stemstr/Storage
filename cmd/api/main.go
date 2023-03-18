@@ -14,8 +14,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/stemstr/storage/internal/db/sqlite"
 	"github.com/stemstr/storage/internal/encoder"
-	quotes "github.com/stemstr/storage/internal/quotestore"
 	"github.com/stemstr/storage/internal/storage/file"
 )
 
@@ -47,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Storage setup
+	// Media storage setup
 	var store storageProvider
 	switch cfg.StorageType {
 	default:
@@ -80,7 +80,8 @@ func main() {
 	}
 	streamRoute := streamURL.Path
 
-	quoteDB, err := quotes.New(cfg.QuoteDB)
+	// DB setup
+	db, err := sqlite.New(cfg.DBFile)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
@@ -91,7 +92,7 @@ func main() {
 		Store:   store,
 		Encoder: enc,
 		Relay:   relay,
-		QuoteDB: quoteDB,
+		DB:      db,
 	}
 
 	r := chi.NewRouter()

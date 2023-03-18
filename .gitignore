@@ -3,3 +3,4 @@ data/
 files/
 streams/
 **/testdata/output/*
+*.db
