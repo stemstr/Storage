@@ -29,6 +29,40 @@ type handlers struct {
 	DB      db.DB
 }
 
+// handleBetaSignup stores a pubkey.
+func (h *handlers) handleBetaSignup(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if err := r.ParseForm(); err != nil {
+		fmt.Printf("signup: parse form: %v\n", err)
+		http.Error(w, "failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	pubkey := r.Form.Get("pubkey")
+	if !validPubkey(pubkey) {
+		fmt.Printf("signup: invalid pubkey: %v\n", pubkey)
+		http.Error(w, "invalid pubkey", http.StatusBadRequest)
+		return
+	}
+
+	_, err := h.DB.CreateUser(ctx, db.CreateUserRequest{
+		Pubkey: pubkey,
+	})
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unique constraint failed") {
+			fmt.Printf("signup: duplicate user %q\n", pubkey)
+		} else {
+			fmt.Printf("signup: create user: %v\n", err)
+			http.Error(w, "unable to complete request", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	fmt.Printf("signup: %v\n", pubkey)
+	w.WriteHeader(http.StatusOK)
+}
+
 // handleDownloadMedia fetches stored media
 func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	var (
@@ -70,6 +104,10 @@ func (h *handlers) handlePostEvent(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "unable to parse request", http.StatusBadRequest)
+		return
+	}
+	if !validPubkey(req.PubKey) {
+		http.Error(w, "invalid pubkey", http.StatusBadRequest)
 		return
 	}
 
@@ -114,6 +152,10 @@ func (h *handlers) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 
 	if req.Pubkey == "" {
 		http.Error(w, "pk field required", http.StatusBadRequest)
+		return
+	}
+	if !validPubkey(req.Pubkey) {
+		http.Error(w, "invalid pubkey", http.StatusBadRequest)
 		return
 	}
 	if req.Filesize == 0 {
@@ -191,6 +233,11 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sum := upload.ShaSum()
+
+	if !validPubkey(upload.Pubkey) {
+		http.Error(w, "invalid pubkey", http.StatusBadRequest)
+		return
+	}
 
 	invoice, media, err := h.validateUpload(ctx, upload)
 	if err != nil {
@@ -389,4 +436,8 @@ func detectContentType(data []byte, fileName *string) string {
 	}
 
 	return http.DetectContentType(data)
+}
+
+func validPubkey(pk string) bool {
+	return len(pk) == 64
 }

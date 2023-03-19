@@ -61,7 +61,7 @@ func (r *repo) createSchema() error {
 	const schema = `
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    pubkey TEXT NOT NULL,
+    pubkey TEXT NOT NULL UNIQUE,
     created_at DATETIME NOT NULL
 );
 

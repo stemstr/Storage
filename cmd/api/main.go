@@ -100,6 +100,7 @@ func main() {
 	r.Use(cors.AllowAll().Handler)
 	r.Use(metricsMiddleware)
 
+	r.Post("/beta-signup", h.handleBetaSignup)
 	r.Get("/download/{sum}", h.handleDownloadMedia)
 	r.Post("/event", h.handlePostEvent)
 	r.Post("/upload/quote", h.handleGetQuote)
