@@ -106,6 +106,7 @@ func main() {
 	r.Post("/upload/quote", h.handleGetQuote)
 	r.Post("/upload", h.handleUploadMedia)
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
+	r.Get("/debug/stream", h.handleDebugStream)
 
 	fileServer(r, streamRoute, http.Dir(streamsDir))
 
