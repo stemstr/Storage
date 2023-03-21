@@ -5,15 +5,7 @@ services:
     command: "-config /config/api-config.yml"
     restart: on-failure:5
     ports:
+      - "9000:9000"
       - "9001:9001"
     volumes:
       - ./local:/config
-    depends_on:
-      - relay
-  relay:
-    image: scsibug/nostr-rs-relay
-    ports:
-      - "9000:9000"
-    volumes:
-      - ./local/data:/usr/src/app/db
-      - ./local/relay-config.toml:/usr/src/app/config.toml

@@ -129,7 +129,7 @@ func (h *handlers) handlePostEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = h.Relay.Publish(ctx, event)
+	h.Relay.Publish(ctx, event)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -266,7 +266,7 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Only do this after async encoder pool has completed
-	_ = h.Relay.Publish(ctx, upload.Event)
+	h.Relay.Publish(ctx, upload.Event)
 
 	uploadCounter.Inc()
 

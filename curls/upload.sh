@@ -40,7 +40,7 @@ event() {
 {
     "id": "",
     "pubkey": "000005f8bc46b589ace6db0c6f7cf8b1b88dc55595886976e53bbd91423e267e",
-    "created_at": 1677376043,
+    "created_at": $(date +%s),
     "kind": 1,
     "tags": [
       ["t","hiphop"],

@@ -10,11 +10,7 @@ import (
 )
 
 type nostrProvider interface {
-	Publish(context.Context, nostr.Event) nostr.Status
-}
-
-func connectToRelay(ctx context.Context, url string) (*nostr.Relay, error) {
-	return nostr.RelayConnect(ctx, url)
+	Publish(context.Context, nostr.Event)
 }
 
 func parseEncodedEvent(e string) (*nostr.Event, error) {

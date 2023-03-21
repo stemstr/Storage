@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -40,12 +39,13 @@ func main() {
 	}
 
 	// Relay setup
-	ctx := context.Background()
-	relay, err := connectToRelay(ctx, cfg.NostrRelay)
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
+	relay := newRelay(cfg.NostrRelayDBFile, cfg.NostrRelayPort)
+	go func() {
+		if err := relay.Start(); err != nil {
+			log.Printf("relay err: %v\n", err)
+			os.Exit(1)
+		}
+	}()
 
 	// Media storage setup
 	var store storageProvider
@@ -56,7 +56,7 @@ func main() {
 	case "filesystem":
 		store, err = file.New(cfg.StorageConfig)
 		if err != nil {
-			log.Println(err)
+			log.Printf("storage err: %v\n", err)
 			os.Exit(1)
 		}
 	}
@@ -83,7 +83,7 @@ func main() {
 	// DB setup
 	db, err := sqlite.New(cfg.DBFile)
 	if err != nil {
-		log.Println(err)
+		log.Printf("db err: %v\n", err)
 		os.Exit(1)
 	}
 

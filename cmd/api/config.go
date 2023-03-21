@@ -23,7 +23,8 @@ type Config struct {
 	StorageConfig     map[string]string `yaml:"storage_config" envconfig:"STORAGE_CONFIG"`
 	StreamConfig      map[string]string `yaml:"stream_config" envconfig:"STREAM_CONFIG"`
 	MaxUploadSizeMB   int64             `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
-	NostrRelay        string            `yaml:"nostr_relay" envconfig:"NOSTR_RELAY"`
+	NostrRelayDBFile  string            `yaml:"nostr_relay_db_file" envconfig:"NOSTR_RELAY_DB_FILE"`
+	NostrRelayPort    int               `yaml:"nostr_relay_port" envconfig:"NOSTR_RELAY_PORT"`
 	DBFile            string            `yaml:"db_file" envconfig:"DB_FILE"`
 }
 

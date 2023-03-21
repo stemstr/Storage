@@ -2,7 +2,9 @@ port: 9001
 api_path: http://localhost:9001/upload
 stream_base: http://localhost:9001/stream
 download_base: http://localhost:9001/download
-nostr_relay: ws://relay:9000
+nostr_relay_db_file: relay.db
+nostr_relay_port: 9000
+db_file: sqlite.db
 accepted_mimetypes:
   - audio/wav
   - audio/wave
@@ -23,4 +25,3 @@ stream_config:
   media_dir: ./streams
   ffmpeg: /usr/bin/ffmpeg
   chunk_size_seconds: 5
-db_file: /config/sqlite.db

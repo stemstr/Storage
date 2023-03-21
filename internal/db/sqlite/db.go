@@ -3,7 +3,9 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -29,6 +31,14 @@ type DB interface {
 func New(dbFile string) (DB, error) {
 	if dbFile == "" {
 		return nil, fmt.Errorf("must set db_file")
+	}
+	if _, err := os.Stat(dbFile); errors.Is(err, os.ErrNotExist) {
+		fmt.Printf("creating db file %v\n", dbFile)
+		f, err := os.Create(dbFile)
+		if err != nil {
+			return nil, err
+		}
+		f.Close()
 	}
 
 	db, err := sql.Open("sqlite3", dbFile)
