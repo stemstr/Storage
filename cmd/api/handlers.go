@@ -254,8 +254,10 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Move encoding into async worker pool.
+	// TODO: Fix the config
+	mediaDir := h.Config.StorageConfig["media_dir"]
 	var (
-		filePath    = filepath.Join("./files", sum, "data")
+		filePath    = filepath.Join(mediaDir, sum, "data")
 		contentType = upload.ContentType
 	)
 	_, err = h.Encoder.EncodeMP3(ctx, filePath, contentType, sum)
