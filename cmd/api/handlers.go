@@ -84,6 +84,9 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	downloadCounter.Inc()
+	// TODO: Do we need the extension here for the OS to handle the file well
+	// for the drag+drop?
+	w.Header().Set("Content-Disposition", "attachment; filename="+sum)
 	w.Header().Set("Content-Type", detectContentType(fileBytes, nil))
 	w.Header().Set("Content-Length", strconv.Itoa(len(fileBytes)))
 	w.Write(fileBytes)
