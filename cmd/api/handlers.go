@@ -84,11 +84,9 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	downloadCounter.Inc()
-	// TODO: Do we need the extension here for the OS to handle the file well
-	// for the drag+drop?
 	w.Header().Set("Content-Disposition", "attachment; filename="+sum)
-	w.Header().Set("Content-Type", detectContentType(fileBytes, nil))
 	w.Header().Set("Content-Length", strconv.Itoa(len(fileBytes)))
+	w.Header().Set("Content-Type", detectContentType(fileBytes, nil))
 	w.Write(fileBytes)
 }
 
@@ -256,11 +254,9 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Move encoding into async worker pool.
-	// TODO: Fix the config
-	mediaDir := h.Config.StorageConfig["media_dir"]
+	// PERF: Move encoding into async worker pool.
 	var (
-		filePath    = filepath.Join(mediaDir, sum, "data")
+		filePath    = filepath.Join(h.Config.MediaStorageDir, sum, "data")
 		contentType = upload.ContentType
 	)
 	_, err = h.Encoder.EncodeMP3(ctx, filePath, contentType, sum)

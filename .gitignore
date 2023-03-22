@@ -1,6 +1,5 @@
 bin/
-data/
-files/
-streams/
+local/data/
+local/uploads/
 **/testdata/output/*
 *.db

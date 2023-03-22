@@ -49,12 +49,12 @@ func main() {
 
 	// Media storage setup
 	var store storageProvider
-	switch cfg.StorageType {
+	switch cfg.MediaStorageType {
 	default:
 		log.Printf("missing or unknown storage_type. using 'filesystem'")
 		fallthrough
 	case "filesystem":
-		store, err = file.New(cfg.StorageConfig)
+		store, err = file.New(cfg.MediaStorageDir)
 		if err != nil {
 			log.Printf("storage err: %v\n", err)
 			os.Exit(1)
@@ -62,17 +62,13 @@ func main() {
 	}
 
 	// Encoder setup
-	enc, err := encoder.New(cfg.StreamConfig)
+	enc, err := encoder.New(cfg.StreamStorageDir, cfg.StreamFFMPEG,
+		cfg.StreamCodec, cfg.StreamBitrate, cfg.StreamChunkSizeSeconds)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
 
-	streamsDir, ok := cfg.StreamConfig["media_dir"]
-	if !ok {
-		log.Printf("must set stream_config.media_dir")
-		os.Exit(1)
-	}
 	streamURL, err := url.Parse(cfg.StreamBase)
 	if err != nil {
 		log.Println(err)
@@ -108,7 +104,7 @@ func main() {
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 	r.Get("/debug/stream", h.handleDebugStream)
 
-	fileServer(r, streamRoute, http.Dir(streamsDir))
+	fileServer(r, streamRoute, http.Dir(cfg.StreamStorageDir))
 
 	port := fmt.Sprintf(":%d", cfg.Port)
 	log.Printf("listening on %v\n", port)

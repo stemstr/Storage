@@ -22,9 +22,8 @@ stream_base: http://localhost:9000/stream
 accepted_mimetypes:
   - image/jpg
   - image/png
-storage_type: filesystem
-storage_config:
-  media_dir: ./files
+media_storage_type: filesystem
+media_storage_dir: ./files
 `))
 	assert.NoError(t, err)
 
@@ -36,7 +35,7 @@ storage_config:
 	assert.Equal(t, "http://localhost:9000/download", cfg.DownloadBase)
 	assert.Equal(t, "http://localhost:9000/stream", cfg.StreamBase)
 	assert.Equal(t, []string{"image/jpg", "image/png"}, cfg.AcceptedMimetypes)
-	assert.Equal(t, "filesystem", cfg.StorageType)
+	assert.Equal(t, "filesystem", cfg.MediaStorageType)
 }
 
 func TestLoadConfigFromEnv(t *testing.T) {
@@ -45,8 +44,8 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	t.Setenv("DOWNLOAD_BASE", "http://localhost:9000/download")
 	t.Setenv("STREAM_BASE", "http://localhost:9000/stream")
 	t.Setenv("ACCEPTED_MIMETYPES", "image/jpg,image/png")
-	t.Setenv("STORAGE_TYPE", "filesystem")
-	t.Setenv("STORAGE_CONFIG", "media_dir:./files")
+	t.Setenv("MEDIA_STORAGE_TYPE", "filesystem")
+	t.Setenv("MEDIA_STORAGE_DIR", "./files")
 
 	var cfg Config
 	assert.NoError(t, cfg.LoadFromEnv())
@@ -55,5 +54,6 @@ func TestLoadConfigFromEnv(t *testing.T) {
 	assert.Equal(t, "http://localhost:9000/download", cfg.DownloadBase)
 	assert.Equal(t, "http://localhost:9000/stream", cfg.StreamBase)
 	assert.Equal(t, []string{"image/jpg", "image/png"}, cfg.AcceptedMimetypes)
-	assert.Equal(t, "filesystem", cfg.StorageType)
+	assert.Equal(t, "filesystem", cfg.MediaStorageType)
+	assert.Equal(t, "./files", cfg.MediaStorageDir)
 }
