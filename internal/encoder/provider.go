@@ -3,51 +3,16 @@ package encoder
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
-	"strconv"
 )
 
-const (
-	defaultFfmpeg           = "ffmpeg"
-	defaultChunkSizeSeconds = 10
-	defaultCodec            = "libmp3lame"
-	defaultBitrate          = "128k"
-)
-
-func New(cfg map[string]string) (*Provider, error) {
-	mediaDir := cfg["media_dir"]
+func New(mediaDir, ffmpeg, codec, bitrate string, chunkSizeSeconds int) (*Provider, error) {
 	if err := os.MkdirAll(mediaDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to make streams MediaDir %q: %w", mediaDir, err)
 	}
 
-	ffmpeg, ok := cfg["ffmpeg"]
-	if !ok {
-		log.Printf("no stream_config.ffmpeg found. using default %q", defaultFfmpeg)
-		ffmpeg = defaultFfmpeg
-	}
-
-	chunkSizeSeconds := defaultChunkSizeSeconds
-	chunkSizeSecondsStr, ok := cfg["chunk_size_seconds"]
-	if ok {
-		var err error
-		chunkSizeSeconds, err = strconv.Atoi(chunkSizeSecondsStr)
-		if err != nil {
-			return nil, fmt.Errorf("chunk_size_seconds: %w", err)
-		}
-	} else {
-		log.Printf("no stream_config.chunk_size_seconds found. using default %v", defaultChunkSizeSeconds)
-	}
-	codec, ok := cfg["codec"]
-	if !ok {
-		log.Printf("no stream_config.codec found. using default %q", defaultCodec)
-		codec = defaultCodec
-	}
-	bitrate, ok := cfg["bitrate"]
-	if !ok {
-		log.Printf("no stream_config.bitrate found. using default %q", defaultBitrate)
-		bitrate = defaultBitrate
-	}
+	fmt.Printf("ffmpeg settings: mediaDir=%v binary=%v codec=%v bitrate=%v chunkSize=%v\n",
+		mediaDir, ffmpeg, codec, bitrate, chunkSizeSeconds)
 
 	enc := newFfmpeg(ffmpeg, encodeOpts{
 		ChunkSizeSeconds: chunkSizeSeconds,

@@ -17,9 +17,7 @@ func TestSave(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.Remove(tempDir)
 
-	store, err := New(map[string]string{
-		"media_dir": tempDir,
-	})
+	store, err := New(tempDir)
 	assert.NoError(t, err)
 
 	var (
@@ -38,9 +36,7 @@ func TestGet(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.Remove(tempDir)
 
-	store, err := New(map[string]string{
-		"media_dir": tempDir,
-	})
+	store, err := New(tempDir)
 	assert.NoError(t, err)
 
 	var (

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/kelseyhightower/envconfig"
@@ -9,23 +8,30 @@ import (
 )
 
 const (
-	defaultMaxUploadSizeMB = 2
-	defaultStreamsMediaDir = "./streams"
+	defaultMaxUploadSizeMB        = 2
+	defaultStreamFFMPEG           = "ffmpeg"
+	defaultStreamChunkSizeSeconds = 10
+	defaultStreamCodec            = "libmp3lame"
+	defaultStreamBitrate          = "128k"
 )
 
 type Config struct {
-	APIPath           string            `yaml:"api_path" envconfig:"API_PATH"`
-	DownloadBase      string            `yaml:"download_base" envconfig:"DOWNLOAD_BASE"`
-	StreamBase        string            `yaml:"stream_base" envconfig:"STREAM_BASE"`
-	AcceptedMimetypes []string          `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
-	Port              int               `yaml:"port" envconfig:"PORT"`
-	StorageType       string            `yaml:"storage_type" envconfig:"STORAGE_TYPE"`
-	StorageConfig     map[string]string `yaml:"storage_config" envconfig:"STORAGE_CONFIG"`
-	StreamConfig      map[string]string `yaml:"stream_config" envconfig:"STREAM_CONFIG"`
-	MaxUploadSizeMB   int64             `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
-	NostrRelayDBFile  string            `yaml:"nostr_relay_db_file" envconfig:"NOSTR_RELAY_DB_FILE"`
-	NostrRelayPort    int               `yaml:"nostr_relay_port" envconfig:"NOSTR_RELAY_PORT"`
-	DBFile            string            `yaml:"db_file" envconfig:"DB_FILE"`
+	Port                   int      `yaml:"port" envconfig:"PORT"`
+	APIPath                string   `yaml:"api_path" envconfig:"API_PATH"`
+	StreamBase             string   `yaml:"stream_base" envconfig:"STREAM_BASE"`
+	DownloadBase           string   `yaml:"download_base" envconfig:"DOWNLOAD_BASE"`
+	MediaStorageType       string   `yaml:"media_storage_type" envconfig:"MEDIA_STORAGE_TYPE"`
+	MediaStorageDir        string   `yaml:"media_storage_dir" envconfig:"MEDIA_STORAGE_DIR"`
+	StreamStorageDir       string   `yaml:"stream_storage_dir" envconfig:"STREAM_STORAGE_DIR"`
+	StreamFFMPEG           string   `yaml:"stream_ffmpeg" envconfig:"STREAM_FFMPEG"`
+	StreamChunkSizeSeconds int      `yaml:"stream_chunk_size_seconds" envconfig:"STREAM_CHUNK_SIZE_SECONDS"`
+	StreamCodec            string   `yaml:"stream_codec" envconfig:"STREAM_CODEC"`
+	StreamBitrate          string   `yaml:"stream_bitrate" envconfig:"STREAM_BITRATE"`
+	NostrRelayDBFile       string   `yaml:"nostr_relay_db_file" envconfig:"NOSTR_RELAY_DB_FILE"`
+	NostrRelayPort         int      `yaml:"nostr_relay_port" envconfig:"NOSTR_RELAY_PORT"`
+	DBFile                 string   `yaml:"db_file" envconfig:"DB_FILE"`
+	MaxUploadSizeMB        int64    `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
+	AcceptedMimetypes      []string `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
 }
 
 // Load Config from a yaml file at path.
@@ -58,12 +64,16 @@ func (c *Config) applyDefaults() {
 	if c.MaxUploadSizeMB == 0 {
 		c.MaxUploadSizeMB = defaultMaxUploadSizeMB
 	}
-
-	if _, ok := c.StreamConfig["media_dir"]; !ok {
-		log.Printf("no stream_config.media_dir found. using default %q", defaultStreamsMediaDir)
-		if c.StreamConfig == nil {
-			c.StreamConfig = map[string]string{}
-		}
-		c.StreamConfig["media_dir"] = defaultStreamsMediaDir
+	if c.StreamFFMPEG == "" {
+		c.StreamFFMPEG = defaultStreamFFMPEG
+	}
+	if c.StreamChunkSizeSeconds == 0 {
+		c.StreamChunkSizeSeconds = defaultStreamChunkSizeSeconds
+	}
+	if c.StreamCodec == "" {
+		c.StreamCodec = defaultStreamCodec
+	}
+	if c.StreamBitrate == "" {
+		c.StreamBitrate = defaultStreamBitrate
 	}
 }

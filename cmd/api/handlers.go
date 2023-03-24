@@ -84,8 +84,9 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	}
 
 	downloadCounter.Inc()
-	w.Header().Set("Content-Type", detectContentType(fileBytes, nil))
+	w.Header().Set("Content-Disposition", "attachment; filename="+sum)
 	w.Header().Set("Content-Length", strconv.Itoa(len(fileBytes)))
+	w.Header().Set("Content-Type", detectContentType(fileBytes, nil))
 	w.Write(fileBytes)
 }
 
@@ -253,11 +254,9 @@ func (h *handlers) handleUploadMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Move encoding into async worker pool.
-	// TODO: Fix the config
-	mediaDir := h.Config.StorageConfig["media_dir"]
+	// PERF: Move encoding into async worker pool.
 	var (
-		filePath    = filepath.Join(mediaDir, sum, "data")
+		filePath    = filepath.Join(h.Config.MediaStorageDir, sum, "data")
 		contentType = upload.ContentType
 	)
 	_, err = h.Encoder.EncodeMP3(ctx, filePath, contentType, sum)
@@ -423,6 +422,50 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func (h *handlers) handleDebugStream(w http.ResponseWriter, r *http.Request) {
+	const html = `<html>
+	<head>
+		<title>Debug stream</title>
+    <script src="https://hlsjs-dev.video-dev.org/dist/hls.js"></script>
+	</head>
+  <body>
+    <center>
+      <h1>Debug stream</h1>
+      <div>
+        <input id="url" placeholder="stream url">
+        <button onClick="loadStream()">load</button>
+      </div>
+
+			<video controls id="video" height="600"></video>
+    </center>
+
+    <script>
+      const doIt = (url) => {
+        var video = document.getElementById('video');
+        if (Hls.isSupported()) {
+          var hls = new Hls({
+            debug: true,
+          });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+            video.muted = true;
+            video.play();
+          });
+        }
+      }
+      const loadStream = () => {
+        const url = document.getElementById("url").value;
+        doIt(url)
+      }
+    </script>
+	</body>
+</html>`
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
 }
 
 func detectContentType(data []byte, fileName *string) string {

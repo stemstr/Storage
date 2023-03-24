@@ -4,23 +4,15 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 )
 
 const (
-	defaultMediaDir = "./files"
-	ondiskFilename  = "data"
+	ondiskFilename = "data"
 )
 
-func New(cfg map[string]string) (*Provider, error) {
-	mediaDir, ok := cfg["media_dir"]
-	if !ok {
-		log.Printf("no storage_config.media_dir found. using default %q", defaultMediaDir)
-		mediaDir = defaultMediaDir
-	}
-
+func New(mediaDir string) (*Provider, error) {
 	if err := os.MkdirAll(mediaDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to make MediaDir: %w", err)
 	}
