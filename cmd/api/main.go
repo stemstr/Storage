@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -15,7 +16,10 @@ import (
 
 	"github.com/stemstr/storage/internal/db/sqlite"
 	"github.com/stemstr/storage/internal/encoder"
-	"github.com/stemstr/storage/internal/storage/file"
+	"github.com/stemstr/storage/internal/service"
+	blob "github.com/stemstr/storage/internal/storage/blob"
+	ls "github.com/stemstr/storage/internal/storage/filesystem"
+	"github.com/stemstr/storage/internal/waveform"
 )
 
 func main() {
@@ -38,6 +42,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Ensure the local directories exist
+	if err := createDirIfNotExists(cfg.MediaStorageDir); err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	if err := createDirIfNotExists(cfg.StreamStorageDir); err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	if err := createDirIfNotExists(cfg.WavStorageDir); err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
 	// Relay setup
 	relay := newRelay(cfg.NostrRelayDBFile, cfg.NostrRelayPort)
 	go func() {
@@ -47,27 +65,12 @@ func main() {
 		}
 	}()
 
-	// Media storage setup
-	var store storageProvider
-	switch cfg.MediaStorageType {
-	default:
-		log.Printf("missing or unknown storage_type. using 'filesystem'")
-		fallthrough
-	case "filesystem":
-		store, err = file.New(cfg.MediaStorageDir)
-		if err != nil {
-			log.Printf("storage err: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
 	// Encoder setup
-	enc, err := encoder.New(cfg.StreamStorageDir, cfg.StreamFFMPEG,
-		cfg.StreamCodec, cfg.StreamBitrate, cfg.StreamChunkSizeSeconds)
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
+	enc := encoder.New(cfg.StreamFFMPEG, encoder.EncodeOpts{
+		ChunkSizeSeconds: cfg.StreamChunkSizeSeconds,
+		Codec:            cfg.StreamCodec,
+		Bitrate:          cfg.StreamBitrate,
+	})
 
 	streamURL, err := url.Parse(cfg.StreamBase)
 	if err != nil {
@@ -83,12 +86,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Service setup
+	var (
+		svcConfig = service.Config{
+			OriginalMediaLocalDir: cfg.MediaStorageDir,
+			StreamMediaLocalDir:   cfg.StreamStorageDir,
+			WAVMediaLocalDir:      cfg.WavStorageDir,
+		}
+		ls  = ls.New()
+		s3  = blob.New()
+		viz = waveform.New(enc)
+	)
+
+	svc, err := service.New(svcConfig, db, ls, s3, enc, viz)
+	if err != nil {
+		log.Printf("service err: %v\n", err)
+		os.Exit(1)
+	}
+
 	h := handlers{
-		Config:  cfg,
-		Store:   store,
-		Encoder: enc,
-		Relay:   relay,
-		DB:      db,
+		config: cfg,
+		relay:  relay,
+		svc:    svc,
 	}
 
 	r := chi.NewRouter()
@@ -96,13 +115,14 @@ func main() {
 	r.Use(cors.AllowAll().Handler)
 	r.Use(metricsMiddleware)
 
-	r.Post("/beta-signup", h.handleBetaSignup)
 	r.Get("/download/{sum}", h.handleDownloadMedia)
-	r.Post("/event", h.handlePostEvent)
-	r.Post("/upload/quote", h.handleGetQuote)
-	r.Post("/upload", h.handleUploadMedia)
+	r.Get("/metadata/{sum}", h.handleGetMetadata)
+	r.Post("/upload", h.handleUpload)
+	// Debug
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 	r.Get("/debug/stream", h.handleDebugStream)
+	// Deprecated
+	r.Post("/event", h.handlePostEvent)
 
 	fileServer(r, streamRoute, http.Dir(cfg.StreamStorageDir))
 
@@ -110,4 +130,13 @@ func main() {
 	log.Printf("listening on %v\n", port)
 
 	http.ListenAndServe(port, r)
+}
+
+func createDirIfNotExists(path string) error {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(path, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	return nil
 }

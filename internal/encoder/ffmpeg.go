@@ -3,15 +3,16 @@ package encoder
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
 // newFfmpeg returns a new ffmpeg Encoder
-func newFfmpeg(binPath string, opts encodeOpts) Encoder {
+func New(binPath string, opts EncodeOpts) Encoder {
 	return &ffmpegEncoder{
 		bin:  binPath,
 		opts: opts,
@@ -19,7 +20,7 @@ func newFfmpeg(binPath string, opts encodeOpts) Encoder {
 }
 
 // https://trac.ffmpeg.org/wiki/Encode/HighQualityAudio
-type encodeOpts struct {
+type EncodeOpts struct {
 	ChunkSizeSeconds int
 	Codec            string
 	Bitrate          string
@@ -27,13 +28,20 @@ type encodeOpts struct {
 
 type ffmpegEncoder struct {
 	bin  string
-	opts encodeOpts
+	opts EncodeOpts
 }
 
-// Encode encodes the provide audio file into HLS chunked mp3s.
-func (e *ffmpegEncoder) Encode(ctx context.Context, req EncodeRequest) (EncodeResponse, error) {
+// HLS encodes the provided audio file into HLS chunked mp3s.
+func (e *ffmpegEncoder) HLS(ctx context.Context, req EncodeRequest) (EncodeResponse, error) {
+	// Skip if already exists
+	indexFile := hlsIndexPath(req.OutputPath)
+	if _, err := os.Stat(indexFile); err == nil {
+		log.Printf("HLS: already exists: %v\n", indexFile)
+		return EncodeResponse{}, nil
+	}
+
 	var args []string
-	switch strings.ToLower(req.InputType) {
+	switch strings.ToLower(req.Mimetype) {
 	case
 		// .wav
 		"audio/wav", "audio/wave", "audio/x-wav",
@@ -43,7 +51,7 @@ func (e *ffmpegEncoder) Encode(ctx context.Context, req EncodeRequest) (EncodeRe
 		"audio/mp4", "audio/m4a",
 		// .aif
 		"audio/aiff", "audio/x-aiff":
-		args = defaultArgs(e.opts, req.InputPath, req.OutputDir, req.OutputName)
+		args = defaultHLSArgs(e.opts, req.InputPath, req.OutputPath)
 	default:
 		return EncodeResponse{}, ErrUnsupportedType
 	}
@@ -60,16 +68,63 @@ func (e *ffmpegEncoder) Encode(ctx context.Context, req EncodeRequest) (EncodeRe
 
 	return EncodeResponse{
 		Output: out.String(),
-		Path:   filepath.Join(req.OutputName + ".m3u8"),
 	}, nil
 }
 
-func defaultArgs(opts encodeOpts, inputPath, outputDir, name string) []string {
+// WAV encodes the provided audio file as a WAV.
+func (e *ffmpegEncoder) WAV(ctx context.Context, req EncodeRequest) (EncodeResponse, error) {
+	// Skip if already exists
+	if _, err := os.Stat(req.OutputPath); err == nil {
+		log.Printf("WAV: already exists: %v\n", req.OutputPath)
+		return EncodeResponse{}, nil
+	}
+
+	var args []string
+	switch strings.ToLower(req.Mimetype) {
+	case "audio/wav", "audio/wave", "audio/x-wav":
+		if err := copyFile(req.InputPath, req.OutputPath); err != nil {
+			return EncodeResponse{}, err
+		}
+		return EncodeResponse{}, nil
+	case
+		// .mp3
+		"audio/mp3", "audio/mpeg", "audio/x-mpeg-3", "audio/mpeg3",
+		// .m4a
+		"audio/mp4", "audio/m4a",
+		// .aif
+		"audio/aiff", "audio/x-aiff":
+		args = defaultWAVArgs(e.opts, req.InputPath, req.OutputPath)
+	default:
+		return EncodeResponse{}, ErrUnsupportedType
+	}
+
+	cmd := exec.Command(e.bin, args...)
+	var out strings.Builder
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+
+	if err := cmd.Run(); err != nil {
+		log.Printf("encode failure: %v\n cmd=%q", err, cmd.String())
+		return EncodeResponse{Output: out.String()}, err
+	}
+
+	return EncodeResponse{
+		Output: out.String(),
+	}, nil
+}
+
+func hlsIndexPath(outputPath string) string {
+	return fmt.Sprintf("%s.m3u8", outputPath)
+}
+
+func hlsChunksPath(outputPath string) string {
+	return fmt.Sprintf("%s%%03d.ts", outputPath)
+}
+
+func defaultHLSArgs(opts EncodeOpts, inputPath, outputPath string) []string {
 	var (
-		outputIndex      = fmt.Sprintf("%s.m3u8", name)
-		outputChunk      = fmt.Sprintf("%s%%03d.ts", name)
-		outputIndexPath  = filepath.Join(outputDir, outputIndex)
-		outputChunksPath = filepath.Join(outputDir, outputChunk)
+		outputIndexPath  = hlsIndexPath(outputPath)
+		outputChunksPath = hlsChunksPath(outputPath)
 	)
 
 	return []string{
@@ -83,4 +138,42 @@ func defaultArgs(opts encodeOpts, inputPath, outputDir, name string) []string {
 		"-segment_format", "mpegts",
 		outputChunksPath,
 	}
+}
+
+func defaultWAVArgs(opts EncodeOpts, inputPath, outputPath string) []string {
+	// ffmpeg -i test.aif -acodec pcm_s16le -ac 1 -ar 16000 testaif.wav
+
+	return []string{
+		"-i", inputPath,
+		"-acodec", "pcm_s16le",
+		"-ac", "1",
+		"-ar", "16000",
+		outputPath,
+	}
+}
+
+func copyFile(src, dst string) error {
+	stat, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if !stat.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file", src)
+	}
+
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+
+	_, err = io.Copy(destination, source)
+	return err
 }
