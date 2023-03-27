@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"sync"
 
 	db "github.com/stemstr/storage/internal/db/sqlite"
 	"github.com/stemstr/storage/internal/encoder"
@@ -72,42 +73,55 @@ type NewSampleResponse struct {
 }
 
 func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampleResponse, error) {
-	// 1. Save raw file to disk
-
-	// /var/app-data/uploads/original/ae3febc41ced.wav
+	// 1. Save original file to disk
 	rawMediaPath := filepath.Join(s.cfg.OriginalMediaLocalDir, localFilename(r.Sum, r.Mimetype))
 	if err := s.ls.Write(ctx, rawMediaPath, r.Data); err != nil {
 		return nil, fmt.Errorf("filesystem.Write: %w", err)
 	}
 
-	// 2. Transcoding (TODO: sync.Waitgroup)
+	// 2. Transcoding
+	var (
+		wg             sync.WaitGroup
+		hlsErr, wavErr error
+	)
+	wg.Add(2)
 
-	// 	a. Transcode for streaming
 	streamMediaPath := filepath.Join(s.cfg.StreamMediaLocalDir, streamFilename(r.Sum))
-	hlsResp, err := s.enc.HLS(ctx, encoder.EncodeRequest{
-		Mimetype:   r.Mimetype,
-		InputPath:  rawMediaPath,
-		OutputPath: streamMediaPath,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("encoder.HLS: %q: %w", hlsResp.Output, err)
-	}
+	go func(mimetype, rawMediaPath, streamMediaPath string) {
+		defer wg.Done()
+		if resp, err := s.enc.HLS(ctx, encoder.EncodeRequest{
+			Mimetype:   mimetype,
+			InputPath:  rawMediaPath,
+			OutputPath: streamMediaPath,
+		}); err != nil {
+			hlsErr = fmt.Errorf("encoder.HLS: %q: %w", resp.Output, err)
+		}
+	}(r.Mimetype, rawMediaPath, streamMediaPath)
 
-	// 	b. Transcode WAV for waveform generation
 	wavMediaPath := filepath.Join(s.cfg.WAVMediaLocalDir, wavFilename(r.Sum))
-	wavResp, err := s.enc.WAV(ctx, encoder.EncodeRequest{
-		Mimetype:   r.Mimetype,
-		InputPath:  rawMediaPath,
-		OutputPath: wavMediaPath,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("encoder.WAV: %q: %w", wavResp.Output, err)
+	go func(mimetype, rawMediaPath, wavMediaPath string) {
+		defer wg.Done()
+		if resp, err := s.enc.WAV(ctx, encoder.EncodeRequest{
+			Mimetype:   mimetype,
+			InputPath:  rawMediaPath,
+			OutputPath: wavMediaPath,
+		}); err != nil {
+			wavErr = fmt.Errorf("encoder.WAV: %q: %w", resp.Output, err)
+		}
+	}(r.Mimetype, rawMediaPath, wavMediaPath)
+
+	wg.Wait()
+
+	for _, err := range []error{hlsErr, wavErr} {
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// 3. Generator waveform data
+	// 3. Generate waveform data
 	waveform, err := s.viz.Waveform(ctx, wavMediaPath)
 	if err != nil {
-		return nil, fmt.Errorf("waveform.Waveform: %w", err)
+		return nil, fmt.Errorf("waveform generate: %w", err)
 	}
 
 	// 4. Write to DB
