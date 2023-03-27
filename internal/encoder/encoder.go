@@ -10,17 +10,16 @@ var (
 )
 
 type Encoder interface {
-	Encode(context.Context, EncodeRequest) (EncodeResponse, error)
+	HLS(context.Context, EncodeRequest) (EncodeResponse, error)
+	WAV(context.Context, EncodeRequest) (EncodeResponse, error)
 }
 
 type EncodeRequest struct {
+	Mimetype   string
 	InputPath  string
-	InputType  string
-	OutputDir  string
-	OutputName string
+	OutputPath string
 }
 
 type EncodeResponse struct {
 	Output string
-	Path   string
 }
