@@ -11,20 +11,12 @@ import (
 )
 
 type DB interface {
-	// Users
-	CreateUser(context.Context, CreateUserRequest) (*User, error)
-	GetUser(context.Context, string) (*User, error)
-	ListUsers(context.Context) ([]User, error)
-	// Invoices
-	CreateInvoice(context.Context, CreateInvoiceRequest) (*Invoice, error)
-	GetInvoice(context.Context, string) (*Invoice, error)
-	ListInvoices(context.Context) ([]Invoice, error)
 	// Media
 	CreateMedia(context.Context, CreateMediaRequest) (*Media, error)
 	GetMedia(context.Context, string) (*Media, error)
-	GetMediaByInvoice(context.Context, string) (*Media, error)
 	ListMedia(context.Context) ([]Media, error)
 
+	DB() *sql.DB
 	Close() error
 }
 
@@ -63,39 +55,27 @@ type repo struct {
 	db     *sql.DB
 }
 
+func (r *repo) DB() *sql.DB {
+	return r.db
+}
+
 func (r *repo) Close() error {
 	return r.db.Close()
 }
 
 func (r *repo) createSchema() error {
 	const schema = `
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS media (
     id TEXT PRIMARY KEY,
-    pubkey TEXT NOT NULL UNIQUE,
-    created_at DATETIME NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS invoices (
-    id TEXT PRIMARY KEY,
-    payment_hash TEXT NOT NULL,
-    sats INTEGER NOT NULL,
-    paid BOOLEAN NOT NULL,
-    provider TEXT NOT NULL,
+    invoice_id TEXT,
+    size INTEGER NOT NULL,
+    sum TEXT NOT NULL,
+    mimetype TEXT NOT NULL,
+    waveform TEXT,
     created_at DATETIME NOT NULL,
     created_by TEXT NOT NULL
 );
-
-CREATE TABLE IF NOT EXISTS media (
-    id TEXT PRIMARY KEY,
-    invoice_id TEXT NOT NULL,
-    size INTEGER NOT NULL,
-    sum TEXT NOT NULL,
-    original_filename TEXT NOT NULL,
-    created_at DATETIME NOT NULL,
-    created_by TEXT NOT NULL,
-    FOREIGN KEY (invoice_id) REFERENCES invoices(id)
-);
-	CREATE INDEX IF NOT EXISTS idx_user_pubkey ON users(pubkey);
+	CREATE INDEX IF NOT EXISTS idx_media_sum ON media(sum);
 	`
 
 	if _, err := r.db.Exec(schema); err != nil {
