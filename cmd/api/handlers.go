@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -79,7 +80,11 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	req, err := h.parseUploadRequest(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, ErrLogin) {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+		} else {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 		return
 	}
 
@@ -137,6 +142,10 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+var (
+	ErrLogin = fmt.Errorf("login required")
+)
+
 func (h *handlers) parseUploadRequest(r *http.Request) (*service.NewSampleRequest, error) {
 	err := r.ParseMultipartForm(h.config.MaxUploadSizeMB * 1024 * 1024)
 	if err != nil {
@@ -148,7 +157,7 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*service.NewSampleReques
 
 	pk := r.Form.Get("pk")
 	if pk == "" {
-		return nil, fmt.Errorf("must provide pk field")
+		return nil, ErrLogin
 	}
 
 	sum := r.Form.Get("sum")
