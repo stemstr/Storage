@@ -1,6 +1,8 @@
+LDFLAGS="-X main.commit=$(shell git rev-parse --short HEAD) -X main.buildDate=$(shell date +"%Y-%m-%dT%H:%M:%S%z")"
+
 .PHONY: build
 build:
-	go build -o ./bin/api ./cmd/api
+	CGO_ENABLED=1 go build -ldflags=$(LDFLAGS) -o ./bin/api ./cmd/api
 
 .PHONY: run
 run: build

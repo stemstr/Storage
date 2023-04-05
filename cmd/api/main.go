@@ -22,9 +22,16 @@ import (
 	"github.com/stemstr/storage/internal/waveform"
 )
 
+var (
+	commit    string
+	buildDate string
+)
+
 func main() {
 	configPath := flag.String("config", "", "location of config file. If non is specified config will be loaded from the environment")
 	flag.Parse()
+
+	log.Printf("build info: commit: %v date: %v\n", commit, buildDate)
 
 	var (
 		cfg Config
@@ -124,7 +131,8 @@ func main() {
 	fileServer(r, streamRoute, http.Dir(cfg.StreamStorageDir))
 
 	port := fmt.Sprintf(":%d", cfg.Port)
-	log.Printf("listening on %v\n", port)
+
+	log.Printf("api listening on %v\n", port)
 
 	http.ListenAndServe(port, r)
 }
