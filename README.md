@@ -4,17 +4,19 @@ How data gets stored and moved around the network
 
 ## Local environment
 
-Run a local api and nostr-relay using Docker Deskop.
+Run the stemstr api and relay locally.
 
-- nostr-relay: `ws://localhost:9000`
+- relay: `ws://localhost:9000`
 - api: `http://localhost:9001`
 
-**Prerequisites**:
-
-1. Install [Docker Desktop](https://docs.docker.com/compose/install/)
-
-Start the container:
+Run with Go
 
 ```
 make run
+```
+
+Run with [Docker](https://docs.docker.com/compose/install/)
+
+```
+make run-docker
 ```
