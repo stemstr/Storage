@@ -106,7 +106,6 @@ func main() {
 
 	h := handlers{
 		config: cfg,
-		relay:  relay,
 		svc:    svc,
 	}
 
@@ -121,8 +120,6 @@ func main() {
 	// Debug
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 	r.Get("/debug/stream", h.handleDebugStream)
-	// Deprecated
-	r.Post("/event", h.handlePostEvent)
 
 	fileServer(r, streamRoute, http.Dir(cfg.StreamStorageDir))
 
