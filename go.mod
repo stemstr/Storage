@@ -1,6 +1,6 @@
 module github.com/stemstr/storage
 
-go 1.18
+go 1.20
 
 require (
 	github.com/fiatjaf/relayer v1.7.2
