@@ -58,7 +58,8 @@ func (h *handlers) handleGetMetadata(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data, err := json.Marshal(map[string]any{
-		"waveform": resp.Media.Waveform,
+		"waveform":     resp.Media.Waveform,
+		"content_type": resp.ContentType,
 	})
 
 	if err != nil {
