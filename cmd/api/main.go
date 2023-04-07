@@ -126,7 +126,14 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.Use(cors.AllowAll().Handler)
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Content-Disposition", "Link", "X-Download-Filename"},
+		AllowCredentials: false,
+		MaxAge:           300,
+	}))
 	r.Use(metricsMiddleware)
 
 	r.Get("/download/{sum}", h.handleDownloadMedia)
