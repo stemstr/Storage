@@ -10,6 +10,10 @@ import (
 	"github.com/nbd-wtf/go-nostr"
 )
 
+const (
+	stemstrKindAudio = 1808
+)
+
 func newRelay(dbFile string, port int) *Relay {
 	return &Relay{
 		port:    port,
@@ -42,6 +46,18 @@ func (r *Relay) AcceptEvent(evt *nostr.Event) bool {
 	// block events that are too large
 	jsonb, _ := json.Marshal(evt)
 	if len(jsonb) > 10000 {
+		return false
+	}
+
+	switch evt.Kind {
+	case // Allow the following events
+		stemstrKindAudio,
+		nostr.KindSetMetadata,
+		nostr.KindTextNote,
+		nostr.KindContactList,
+		nostr.KindBoost,
+		nostr.KindReaction:
+	default: // Reject all others
 		return false
 	}
 
