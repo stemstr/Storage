@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -12,6 +13,10 @@ import (
 	blob "github.com/stemstr/storage/internal/storage/blob"
 	ls "github.com/stemstr/storage/internal/storage/filesystem"
 	"github.com/stemstr/storage/internal/waveform"
+)
+
+var (
+	ErrNotFound = errors.New("not found")
 )
 
 type Service struct {
@@ -149,6 +154,9 @@ func (s *Service) GetSample(ctx context.Context, sum string) (*GetSampleResponse
 	media, err := s.db.GetMedia(ctx, sum)
 	if err != nil {
 		return nil, fmt.Errorf("db.GetMedia: %w", err)
+	}
+	if media == nil {
+		return nil, ErrNotFound
 	}
 
 	var (
