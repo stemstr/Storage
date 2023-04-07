@@ -40,6 +40,7 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", "attachment; filename="+resp.Filename)
 	w.Header().Set("Content-Length", strconv.Itoa(len(resp.Data)))
 	w.Header().Set("Content-Type", resp.ContentType)
+	w.Header().Set("X-Download-Filename", resp.Filename)
 	w.Write(resp.Data)
 }
 
