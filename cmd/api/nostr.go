@@ -8,24 +8,46 @@ import (
 	"github.com/fiatjaf/relayer"
 	"github.com/fiatjaf/relayer/storage/sqlite3"
 	"github.com/nbd-wtf/go-nostr"
+	"github.com/nbd-wtf/go-nostr/nip11"
 )
 
 const (
 	stemstrKindAudio = 1808
 )
 
-func newRelay(dbFile string, port int) *Relay {
+func newRelay(port int, dbFile, infoPubkey, infoContact, infoDesc, infoVersion string) *Relay {
 	return &Relay{
-		port:    port,
-		storage: &sqlite3.SQLite3Backend{DatabaseURL: dbFile},
-		updates: make(chan nostr.Event),
+		port:        port,
+		storage:     &sqlite3.SQLite3Backend{DatabaseURL: dbFile},
+		updates:     make(chan nostr.Event),
+		infoPubkey:  infoPubkey,
+		infoContact: infoContact,
+		infoDesc:    infoDesc,
+		infoVersion: infoVersion,
 	}
 }
 
 type Relay struct {
-	port    int
-	storage *sqlite3.SQLite3Backend
-	updates chan nostr.Event
+	port        int
+	storage     *sqlite3.SQLite3Backend
+	updates     chan nostr.Event
+	infoPubkey  string
+	infoContact string
+	infoDesc    string
+	infoVersion string
+}
+
+func (r *Relay) GetNIP11InformationDocument() nip11.RelayInformationDocument {
+	supportedNIPs := []int{9, 11, 12, 15, 16, 20}
+	return nip11.RelayInformationDocument{
+		Name:          r.Name(),
+		Description:   r.infoDesc,
+		PubKey:        r.infoPubkey,
+		Contact:       r.infoContact,
+		SupportedNIPs: supportedNIPs,
+		Software:      "https://github.com/Stemstr",
+		Version:       r.infoVersion,
+	}
 }
 
 func (r *Relay) Name() string {

@@ -1,5 +1,4 @@
 port: 9001
-relay_port: 9000
 api_path: http://localhost:9001/upload
 stream_base: http://localhost:9001/stream
 download_base: http://localhost:9001/download
@@ -8,10 +7,8 @@ stream_storage_dir: ./local/uploads/stream
 wav_storage_dir: ./local/uploads/wav
 stream_ffmpeg: ffmpeg
 stream_chunk_size_seconds: 5
-nostr_relay_db_file: relay.db
-nostr_relay_port: 9000
-db_file: sqlite.db
 max_upload_size_mb: 40
+db_file: sqlite.db
 accepted_mimetypes:
   - audio/wav
   - audio/wave
@@ -24,3 +21,10 @@ accepted_mimetypes:
   - audio/m4a
   - audio/aiff
   - audio/x-aiff
+
+nostr_relay_port: 9000
+nostr_relay_db_file: relay.db
+nostr_relay_info_pubkey: ~
+nostr_relay_info_contact: ~
+nostr_relay_info_description: custom relay for https://stemstr.app
+nostr_relay_info_version: 0.1
