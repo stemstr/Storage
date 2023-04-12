@@ -2,7 +2,7 @@ package sqlite
 
 import (
 	"context"
-	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 
@@ -10,8 +10,7 @@ import (
 )
 
 func TestCreateMedia(t *testing.T) {
-	const testDB = "./tmp.db"
-	defer os.Remove(testDB)
+	testDB := filepath.Join(t.TempDir(), "tmp.db")
 
 	r, err := New(testDB)
 	if err != nil {
@@ -38,8 +37,7 @@ func TestCreateMedia(t *testing.T) {
 }
 
 func TestGetMedia(t *testing.T) {
-	const testDB = "./tmp.db"
-	defer os.Remove(testDB)
+	testDB := filepath.Join(t.TempDir(), "tmp.db")
 
 	r, err := New(testDB)
 	if err != nil {
@@ -68,8 +66,7 @@ func TestGetMedia(t *testing.T) {
 }
 
 func TestListMedia(t *testing.T) {
-	const testDB = "./tmp.db"
-	defer os.Remove(testDB)
+	testDB := filepath.Join(t.TempDir(), "tmp.db")
 
 	r, err := New(testDB)
 	if err != nil {

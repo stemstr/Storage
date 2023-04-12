@@ -1,13 +1,12 @@
 package sqlite
 
 import (
-	"os"
+	"path/filepath"
 	"testing"
 )
 
 func TestNewRepo(t *testing.T) {
-	const testDB = "./tmp.db"
-	defer os.Remove(testDB)
+	testDB := filepath.Join(t.TempDir(), "tmp.db")
 	_, err := New(testDB)
 	if err != nil {
 		t.Fatal(err)
