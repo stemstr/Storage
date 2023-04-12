@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHLS(t *testing.T) {
-	const ffmpegPath = "/usr/local/bin/ffmpeg"
+const ffmpegPath = "ffmpeg"
 
+func TestHLS(t *testing.T) {
 	// Output encoded files into a gitignored directory and leave them
 	// for local testing.
 	outputDir := "./testdata/output"
@@ -50,8 +50,6 @@ func TestHLS(t *testing.T) {
 }
 
 func TestWAV(t *testing.T) {
-	const ffmpegPath = "/usr/local/bin/ffmpeg"
-
 	// Output encoded files into a gitignored directory and leave them
 	// for local testing.
 	outputDir := "./testdata/output"
