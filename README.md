@@ -1,13 +1,8 @@
 # storage
 
-How data gets stored and moved around the network
+The backend API and relay for https://stemstr.app
 
-## Local environment
-
-Run the stemstr api and relay locally.
-
-- relay: `ws://localhost:9000`
-- api: `http://localhost:9001`
+## Running locally
 
 Run with Go
 
@@ -20,3 +15,9 @@ Run with [Docker](https://docs.docker.com/compose/install/)
 ```
 make run-docker
 ```
+
+You now have the Stemstr API and Relay running on localhost:
+
+- relay: `ws://localhost:9000`
+- api: `http://localhost:9001`
+
