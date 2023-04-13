@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
@@ -90,15 +89,6 @@ func (r *Relay) AcceptEvent(evt *nostr.Event) bool {
 
 func (relay *Relay) InjectEvents() chan nostr.Event {
 	return relay.updates
-}
-
-func (relay *Relay) Publish(ctx context.Context, evt nostr.Event) {
-	jsonb, _ := json.Marshal(evt)
-	fmt.Printf("relay: inject event: %v\n", string(jsonb))
-	if err := relay.storage.SaveEvent(&evt); err != nil {
-		fmt.Printf("relay: failed to save event: %v\n", err)
-	}
-	relay.updates <- evt
 }
 
 func (r *Relay) Start() error {
