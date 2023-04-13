@@ -142,6 +142,7 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uploadCounter.Inc()
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
