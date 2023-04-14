@@ -50,7 +50,9 @@ func (e *ffmpegEncoder) HLS(ctx context.Context, req EncodeRequest) (EncodeRespo
 		// .m4a
 		"audio/mp4", "audio/m4a",
 		// .aif
-		"audio/aiff", "audio/x-aiff":
+		"audio/aiff", "audio/x-aiff",
+		// .ogg
+		"audio/ogg":
 		args = defaultHLSArgs(e.opts, req.InputPath, req.OutputPath)
 	default:
 		return EncodeResponse{}, ErrUnsupportedType
@@ -92,7 +94,9 @@ func (e *ffmpegEncoder) WAV(ctx context.Context, req EncodeRequest) (EncodeRespo
 		// .m4a
 		"audio/mp4", "audio/m4a",
 		// .aif
-		"audio/aiff", "audio/x-aiff":
+		"audio/aiff", "audio/x-aiff",
+		// .ogg
+		"audio/ogg":
 		args = defaultWAVArgs(e.opts, req.InputPath, req.OutputPath)
 	default:
 		return EncodeResponse{}, ErrUnsupportedType

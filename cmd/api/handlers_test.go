@@ -17,6 +17,7 @@ func TestDetectContentType(t *testing.T) {
 		{"../../internal/encoder/testdata/test.mp3", "audio/mp3"},
 		{"../../internal/encoder/testdata/test.m4a", "audio/mp4"},
 		{"../../internal/encoder/testdata/test.wav", "audio/wave"},
+		{"../../internal/encoder/testdata/test.ogg", "audio/ogg"},
 	}
 
 	for _, tt := range tests {
