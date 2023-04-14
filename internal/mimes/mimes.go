@@ -4,32 +4,72 @@ import (
 	"strings"
 )
 
-const (
-	AudioAIFF = "audio/aiff"
-	AudioFLAC = "audio/flac"
-	AudioMP3  = "audio/mp3"
-	AudioMP4  = "audio/mp4"
-	AudioOGG  = "audio/ogg"
-	AudioWAV  = "audio/wave"
-)
+type mime struct {
+	Mimetype       string
+	Extension      string
+	OtherMimetypes []string
+}
 
-func FromFilename(name string) string {
-	switch {
-	case strings.HasSuffix(name, ".aif"):
-		return AudioAIFF
-	case strings.HasSuffix(name, ".aiff"):
-		return AudioAIFF
-	case strings.HasSuffix(name, ".flac"):
-		return AudioFLAC
-	case strings.HasSuffix(name, ".mp3"):
-		return AudioMP3
-	case strings.HasSuffix(name, ".m4a"):
-		return AudioMP4
-	case strings.HasSuffix(name, ".ogg"):
-		return AudioOGG
-	case strings.HasSuffix(name, ".wav"):
-		return AudioWAV
-	default:
-		return ""
+var supportedMimes = []mime{
+	{
+		Mimetype:       "audio/aiff",
+		Extension:      ".aif",
+		OtherMimetypes: []string{"audio/x-aiff"},
+	},
+	{
+		Mimetype:       "audio/flac",
+		Extension:      ".flac",
+		OtherMimetypes: []string{"audio/x-flac"},
+	},
+	{
+		Mimetype:       "audio/mp3",
+		Extension:      ".mp3",
+		OtherMimetypes: []string{"audio/mpeg3", "audio/x-mpeg-3", "audio/mpeg"},
+	},
+	{
+		Mimetype:       "audio/mp4",
+		Extension:      ".m4a",
+		OtherMimetypes: []string{"audio/m4a"},
+	},
+	{
+		Mimetype:       "audio/ogg",
+		Extension:      ".ogg",
+		OtherMimetypes: []string{"audio/ogg"},
+	},
+	{
+		Mimetype:       "audio/wave",
+		Extension:      ".wav",
+		OtherMimetypes: []string{"audio/wav", "audio/x-wav"},
+	},
+}
+
+// FileExtension returns a file extension for a mimetype.
+func FileExtension(mimetype string) string {
+	for _, supported := range supportedMimes {
+		if strings.EqualFold(supported.Mimetype, mimetype) || contains(supported.OtherMimetypes, mimetype) {
+			return supported.Extension
+		}
 	}
+
+	return ""
+}
+
+// FromFilename returns a mimetype for a filename based on file extension.
+func FromFilename(name string) string {
+	for _, supported := range supportedMimes {
+		if strings.HasSuffix(name, supported.Extension) {
+			return supported.Mimetype
+		}
+	}
+
+	return ""
+}
+
+func contains[T comparable](arr []T, v T) bool {
+	for _, el := range arr {
+		if el == v {
+			return true
+		}
+	}
+	return false
 }
