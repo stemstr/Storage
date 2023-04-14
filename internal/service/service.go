@@ -10,6 +10,7 @@ import (
 
 	db "github.com/stemstr/storage/internal/db/sqlite"
 	"github.com/stemstr/storage/internal/encoder"
+	"github.com/stemstr/storage/internal/mimes"
 	blob "github.com/stemstr/storage/internal/storage/blob"
 	ls "github.com/stemstr/storage/internal/storage/filesystem"
 	"github.com/stemstr/storage/internal/waveform"
@@ -48,17 +49,7 @@ type NewSampleRequest struct {
 
 // LocalFilename is the new filename on disk. Sha.ext
 func localFilename(sum, mimetype string) string {
-	ext := ""
-	switch mimetype {
-	case "audio/wav", "audio/wave", "audio/x-wav":
-		ext = ".wav"
-	case "audio/mp3", "audio/mpeg", "audio/x-mpeg-3", "audio/mpeg3":
-		ext = ".mp3"
-	case "audio/mp4", "audio/m4a":
-		ext = ".m4a"
-	case "audio/aiff", "audio/x-aiff":
-		ext = ".aif"
-	}
+	ext := mimes.FileExtension(mimetype)
 	return sum + ext
 }
 
@@ -69,7 +60,8 @@ func streamFilename(sum string) string {
 
 // wavFilename is the WAV filename on disk. sha.wav
 func wavFilename(sum string) string {
-	return sum + ".wav"
+	ext := mimes.FileExtension("audio/wave")
+	return sum + ext
 }
 
 type NewSampleResponse struct {
@@ -161,6 +153,7 @@ func (s *Service) GetSample(ctx context.Context, sum string) (*GetSampleResponse
 
 	var (
 		filename     = wavFilename(sum)
+		contentType  = mimes.FromFilename(filename)
 		rawMediaPath = filepath.Join(s.cfg.WAVMediaLocalDir, filename)
 	)
 
@@ -173,7 +166,7 @@ func (s *Service) GetSample(ctx context.Context, sum string) (*GetSampleResponse
 		Media:       media,
 		Data:        data,
 		Filename:    filename,
-		ContentType: "audio/wav",
+		ContentType: contentType,
 	}, nil
 }
 
