@@ -160,8 +160,8 @@ func (s *Service) GetSample(ctx context.Context, sum string) (*GetSampleResponse
 	}
 
 	var (
-		filename     = localFilename(sum, media.Mimetype)
-		rawMediaPath = filepath.Join(s.cfg.OriginalMediaLocalDir, filename)
+		filename     = wavFilename(sum)
+		rawMediaPath = filepath.Join(s.cfg.WAVMediaLocalDir, filename)
 	)
 
 	data, err := s.ls.Read(ctx, rawMediaPath)
@@ -173,7 +173,7 @@ func (s *Service) GetSample(ctx context.Context, sum string) (*GetSampleResponse
 		Media:       media,
 		Data:        data,
 		Filename:    filename,
-		ContentType: media.Mimetype,
+		ContentType: "audio/wav",
 	}, nil
 }
 
