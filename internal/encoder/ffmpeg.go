@@ -40,23 +40,7 @@ func (e *ffmpegEncoder) HLS(ctx context.Context, req EncodeRequest) (EncodeRespo
 		return EncodeResponse{}, nil
 	}
 
-	var args []string
-	switch strings.ToLower(req.Mimetype) {
-	case
-		// .wav
-		"audio/wav", "audio/wave", "audio/x-wav",
-		// .mp3
-		"audio/mp3", "audio/mpeg", "audio/x-mpeg-3", "audio/mpeg3",
-		// .m4a
-		"audio/mp4", "audio/m4a",
-		// .aif
-		"audio/aiff", "audio/x-aiff",
-		// .ogg
-		"audio/ogg":
-		args = defaultHLSArgs(e.opts, req.InputPath, req.OutputPath)
-	default:
-		return EncodeResponse{}, ErrUnsupportedType
-	}
+	args := defaultHLSArgs(e.opts, req.InputPath, req.OutputPath)
 
 	cmd := exec.Command(e.bin, args...)
 	var out strings.Builder
@@ -88,18 +72,8 @@ func (e *ffmpegEncoder) WAV(ctx context.Context, req EncodeRequest) (EncodeRespo
 			return EncodeResponse{}, err
 		}
 		return EncodeResponse{}, nil
-	case
-		// .mp3
-		"audio/mp3", "audio/mpeg", "audio/x-mpeg-3", "audio/mpeg3",
-		// .m4a
-		"audio/mp4", "audio/m4a",
-		// .aif
-		"audio/aiff", "audio/x-aiff",
-		// .ogg
-		"audio/ogg":
-		args = defaultWAVArgs(e.opts, req.InputPath, req.OutputPath)
 	default:
-		return EncodeResponse{}, ErrUnsupportedType
+		args = defaultWAVArgs(e.opts, req.InputPath, req.OutputPath)
 	}
 
 	cmd := exec.Command(e.bin, args...)
