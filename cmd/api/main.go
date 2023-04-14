@@ -139,9 +139,7 @@ func main() {
 	r.Get("/download/{sum}", h.handleDownloadMedia)
 	r.Get("/metadata/{sum}", h.handleGetMetadata)
 	r.Post("/upload", h.handleUpload)
-	// Debug
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
-	r.Get("/debug/stream", h.handleDebugStream)
 
 	fileServer(r, streamRoute, http.Dir(cfg.StreamStorageDir))
 

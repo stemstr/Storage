@@ -77,6 +77,7 @@ func (h *handlers) handleGetMetadata(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
+// handleUpload handles user media uploads
 func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	r.Body = http.MaxBytesReader(w, r.Body, h.config.MaxUploadSizeMB*1024*1024)
@@ -141,6 +142,7 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uploadCounter.Inc()
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
@@ -194,6 +196,7 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*service.NewSampleReques
 	}, nil
 }
 
+// fileServer serves static files
 func fileServer(r chi.Router, path string, root http.FileSystem) {
 	if strings.ContainsAny(path, "{}*") {
 		panic("FileServer does not permit any URL parameters.")
@@ -213,58 +216,14 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 	})
 }
 
-func (h *handlers) handleDebugStream(w http.ResponseWriter, r *http.Request) {
-	const html = `<html>
-	<head>
-		<title>Debug stream</title>
-    <script src="https://hlsjs-dev.video-dev.org/dist/hls.js"></script>
-	</head>
-  <body>
-    <center>
-      <h1>Debug stream</h1>
-      <div>
-        <input id="url" placeholder="stream url">
-        <button onClick="loadStream()">load</button>
-      </div>
-
-			<video controls id="video" height="600"></video>
-    </center>
-
-    <script>
-      const doIt = (url) => {
-        var video = document.getElementById('video');
-        if (Hls.isSupported()) {
-          var hls = new Hls({
-            debug: true,
-          });
-          hls.loadSource(url);
-          hls.attachMedia(video);
-          hls.on(Hls.Events.MEDIA_ATTACHED, function () {
-            video.muted = true;
-            video.play();
-          });
-        }
-      }
-      const loadStream = () => {
-        const url = document.getElementById("url").value;
-        doIt(url)
-      }
-    </script>
-	</body>
-</html>`
-
-	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(html))
-}
-
 func detectContentType(data []byte, fileName *string) string {
 	if fileName != nil {
 		switch {
 		case strings.HasSuffix(*fileName, ".m4a"):
-			// http.DetectContentType will return "vidio/mp4" for MPEG-4 audio
+			// http.DetectContentType will return "video/mp4" for MPEG-4 audio
 			return "audio/mp4"
 		case strings.HasSuffix(*fileName, ".mp3"):
-			// http.DetectContentType will return "application/octet-stream" for some MP3's
+			// http.DetectContentType will return "application/octet-stream" for some MP3s
 			return "audio/mp3"
 		}
 	}
