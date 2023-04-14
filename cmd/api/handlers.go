@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/stemstr/storage/internal/mimes"
 	"github.com/stemstr/storage/internal/service"
 )
 
@@ -175,6 +176,11 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*service.NewSampleReques
 		return nil, fmt.Errorf("must provide filename field")
 	}
 
+	mimeType := mimes.FromFilename(fileName)
+	if mimeType == "" {
+		return nil, fmt.Errorf("unaccepted audio file: %q", fileName)
+	}
+
 	f, _, err := r.FormFile("file")
 	if err != nil {
 		return nil, err
@@ -185,8 +191,6 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*service.NewSampleReques
 	if err != nil {
 		return nil, err
 	}
-
-	mimeType := detectContentType(fileBytes, &fileName)
 
 	return &service.NewSampleRequest{
 		Data:     fileBytes,
@@ -258,24 +262,6 @@ func fileServer(r chi.Router, path string, root http.FileSystem) {
 		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
 		fs.ServeHTTP(w, r)
 	})
-}
-
-func detectContentType(data []byte, fileName *string) string {
-	if fileName != nil {
-		switch {
-		case strings.HasSuffix(*fileName, ".m4a"):
-			// http.DetectContentType will return "video/mp4" for MPEG-4 audio
-			return "audio/mp4"
-		case strings.HasSuffix(*fileName, ".mp3"):
-			// http.DetectContentType will return "application/octet-stream" for some MP3s
-			return "audio/mp3"
-		case strings.HasSuffix(*fileName, ".ogg"):
-			// http.DetectContentType will return "application/ogg" for ogg audio
-			return "audio/ogg"
-		}
-	}
-
-	return http.DetectContentType(data)
 }
 
 func validPubkey(pk string) bool {
