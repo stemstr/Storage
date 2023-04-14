@@ -196,6 +196,50 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*service.NewSampleReques
 	}, nil
 }
 
+func (h *handlers) handleDebugStream(w http.ResponseWriter, r *http.Request) {
+	const html = `<html>
+	<head>
+		<title>Debug stream</title>
+    <script src="https://hlsjs-dev.video-dev.org/dist/hls.js"></script>
+	</head>
+  <body>
+    <center>
+      <h1>Debug stream</h1>
+      <div>
+        <input id="url" placeholder="stream url">
+        <button onClick="loadStream()">load</button>
+      </div>
+
+			<video controls id="video" height="600"></video>
+    </center>
+
+    <script>
+      const doIt = (url) => {
+        var video = document.getElementById('video');
+        if (Hls.isSupported()) {
+          var hls = new Hls({
+            debug: true,
+          });
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+            video.muted = true;
+            video.play();
+          });
+        }
+      }
+      const loadStream = () => {
+        const url = document.getElementById("url").value;
+        doIt(url)
+      }
+    </script>
+	</body>
+</html>`
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
+}
+
 // fileServer serves static files
 func fileServer(r chi.Router, path string, root http.FileSystem) {
 	if strings.ContainsAny(path, "{}*") {
