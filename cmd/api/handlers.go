@@ -225,6 +225,9 @@ func detectContentType(data []byte, fileName *string) string {
 		case strings.HasSuffix(*fileName, ".mp3"):
 			// http.DetectContentType will return "application/octet-stream" for some MP3s
 			return "audio/mp3"
+		case strings.HasSuffix(*fileName, ".ogg"):
+			// http.DetectContentType will return "application/ogg" for ogg audio
+			return "audio/ogg"
 		}
 	}
 

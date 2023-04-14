@@ -21,6 +21,7 @@ accepted_mimetypes:
   - audio/m4a
   - audio/aiff
   - audio/x-aiff
+  - audio/ogg
 
 nostr_relay_port: 9000
 nostr_relay_db_file: relay.db

@@ -26,6 +26,7 @@ func TestHLS(t *testing.T) {
 		{"audio/mp3", "./testdata/test.mp3", filepath.Join(outputDir, "test.mp3")},
 		{"audio/mp4", "./testdata/test.m4a", filepath.Join(outputDir, "test.m4a")},
 		{"audio/wave", "./testdata/test.wav", filepath.Join(outputDir, "test.wav")},
+		{"audio/ogg", "./testdata/test.ogg", filepath.Join(outputDir, "test.ogg")},
 	}
 
 	var (
