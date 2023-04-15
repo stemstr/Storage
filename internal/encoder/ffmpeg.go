@@ -119,13 +119,13 @@ func defaultHLSArgs(opts EncodeOpts, inputPath, outputPath string) []string {
 }
 
 func defaultWAVArgs(opts EncodeOpts, inputPath, outputPath string) []string {
-	// ffmpeg -i test.aif -acodec pcm_s16le -ac 1 -ar 16000 testaif.wav
+	// ffmpeg -i test.aif -acodec pcm_s16le -ac 2 -ar 44100 testaif.wav
 
 	return []string{
 		"-i", inputPath,
 		"-acodec", "pcm_s16le",
-		"-ac", "1",
-		"-ar", "16000",
+		"-ac", "2",
+		"-ar", "44100",
 		outputPath,
 	}
 }
