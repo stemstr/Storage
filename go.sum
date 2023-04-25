@@ -70,6 +70,8 @@ github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1m
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
 github.com/fiatjaf/relayer v1.7.2 h1:MlFVIH9faOqsHpsWhjMMJc7yxgvh6FFL18kQGhqUdDw=
 github.com/fiatjaf/relayer v1.7.2/go.mod h1:cQGM8YSoU/7I79Mg9ULlLQWYm/U54/B/4k60fRXEY2o=
+github.com/fiatjaf/relayer v1.7.3-0.20230331143654-a82e5edb0d0a h1:7/eeWxMMAHh969bYRKIuRk7XhW/8C+y+ZaqXVbn7qeI=
+github.com/fiatjaf/relayer v1.7.3-0.20230331143654-a82e5edb0d0a/go.mod h1:cQGM8YSoU/7I79Mg9ULlLQWYm/U54/B/4k60fRXEY2o=
 github.com/go-audio/audio v1.0.0 h1:zS9vebldgbQqktK4H0lUqWrG8P0NxCJVqcj7ZpNnwd4=
 github.com/go-audio/audio v1.0.0/go.mod h1:6uAu0+H2lHkwdGsAY+j2wHPNPpPoeg5AaEFh9FlA+Zs=
 github.com/go-audio/riff v1.0.0 h1:d8iCGbDvox9BfLagY94fBynxSPHO80LmZCaOsmKxokA=
