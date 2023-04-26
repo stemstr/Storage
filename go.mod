@@ -3,7 +3,7 @@ module github.com/stemstr/storage
 go 1.20
 
 require (
-	github.com/fiatjaf/relayer v1.7.3-0.20230331143654-a82e5edb0d0a
+	github.com/fiatjaf/relayer v1.7.3
 	github.com/go-audio/wav v1.0.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/cors v1.2.1
