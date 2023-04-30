@@ -170,6 +170,27 @@ func (s *Service) GetSample(ctx context.Context, sum string) (*GetSampleResponse
 	}, nil
 }
 
+func (s *Service) GetSampleMetadata(ctx context.Context, sum string) (*GetSampleResponse, error) {
+	media, err := s.db.GetMedia(ctx, sum)
+	if err != nil {
+		return nil, fmt.Errorf("db.GetMedia: %w", err)
+	}
+	if media == nil {
+		return nil, ErrNotFound
+	}
+
+	var (
+		filename    = wavFilename(sum)
+		contentType = mimes.FromFilename(filename)
+	)
+
+	return &GetSampleResponse{
+		Media:       media,
+		Filename:    filename,
+		ContentType: contentType,
+	}, nil
+}
+
 type GetSampleResponse struct {
 	Media       *db.Media
 	ContentType string
