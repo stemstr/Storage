@@ -64,14 +64,18 @@ func main() {
 	}
 
 	// Relay setup
-	relay := newRelay(
+	relay, err := newRelay(
 		cfg.NostrRelayPort,
-		cfg.NostrRelayDBFile,
+		cfg.DatabaseURL,
 		cfg.NostrRelayInfoPubkey,
 		cfg.NostrRelayInfoContact,
 		cfg.NostrRelayInfoDescription,
 		cfg.NostrRelayInfoVersion,
 	)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
 
 	go func() {
 		if err := relay.Start(); err != nil {

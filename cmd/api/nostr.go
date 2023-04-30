@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/fiatjaf/relayer"
-	"github.com/fiatjaf/relayer/storage/sqlite3"
+	"github.com/fiatjaf/relayer/storage/postgresql"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip11"
 )
@@ -14,21 +14,27 @@ const (
 	stemstrKindAudio = 1808
 )
 
-func newRelay(port int, dbFile, infoPubkey, infoContact, infoDesc, infoVersion string) *Relay {
-	return &Relay{
+func newRelay(port int, databaseURL, infoPubkey, infoContact, infoDesc, infoVersion string) (*Relay, error) {
+	r := Relay{
 		port:        port,
-		storage:     &sqlite3.SQLite3Backend{DatabaseURL: dbFile},
+		storage:     &postgresql.PostgresBackend{DatabaseURL: databaseURL},
 		updates:     make(chan nostr.Event),
 		infoPubkey:  infoPubkey,
 		infoContact: infoContact,
 		infoDesc:    infoDesc,
 		infoVersion: infoVersion,
 	}
+
+	if err := r.storage.Init(); err != nil {
+		return nil, fmt.Errorf("relay init: %w", err)
+	}
+
+	return &r, nil
 }
 
 type Relay struct {
 	port        int
-	storage     *sqlite3.SQLite3Backend
+	storage     *postgresql.PostgresBackend
 	updates     chan nostr.Event
 	infoPubkey  string
 	infoContact string
