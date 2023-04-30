@@ -52,12 +52,12 @@ func (h *handlers) handleGetMetadata(w http.ResponseWriter, r *http.Request) {
 		sum = chi.URLParam(r, "sum")
 	)
 
-	resp, err := h.svc.GetSample(ctx, sum)
+	resp, err := h.svc.GetSampleMetadata(ctx, sum)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
 			http.Error(w, "not found", http.StatusNotFound)
 		} else {
-			log.Printf("err: svc.GetSample: %v", err)
+			log.Printf("err: svc.GetSampleMetadata: %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
