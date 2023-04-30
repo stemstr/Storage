@@ -27,13 +27,13 @@ type Config struct {
 	StreamChunkSizeSeconds    int      `yaml:"stream_chunk_size_seconds" envconfig:"STREAM_CHUNK_SIZE_SECONDS"`
 	StreamCodec               string   `yaml:"stream_codec" envconfig:"STREAM_CODEC"`
 	StreamBitrate             string   `yaml:"stream_bitrate" envconfig:"STREAM_BITRATE"`
-	NostrRelayDBFile          string   `yaml:"nostr_relay_db_file" envconfig:"NOSTR_RELAY_DB_FILE"`
 	NostrRelayPort            int      `yaml:"nostr_relay_port" envconfig:"NOSTR_RELAY_PORT"`
 	NostrRelayInfoPubkey      string   `yaml:"nostr_relay_info_pubkey" envconfig:"NOSTR_RELAY_INFO_PUBKEY"`
 	NostrRelayInfoContact     string   `yaml:"nostr_relay_info_contact" envconfig:"NOSTR_RELAY_INFO_CONTACT"`
 	NostrRelayInfoDescription string   `yaml:"nostr_relay_info_description" envconfig:"NOSTR_RELAY_INFO_DESCRIPTION"`
 	NostrRelayInfoVersion     string   `yaml:"nostr_relay_info_version" envconfig:"NOSTR_RELAY_INFO_VERSION"`
 	DBFile                    string   `yaml:"db_file" envconfig:"DB_FILE"`
+	DatabaseURL               string   `yaml:"database_url" envconfig:"DATABASE_URL"`
 	MaxUploadSizeMB           int64    `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
 	AcceptedMimetypes         []string `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
 }

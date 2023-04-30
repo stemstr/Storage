@@ -25,8 +25,8 @@ accepted_mimetypes:
   - audio/flac
 
 nostr_relay_port: 9000
-nostr_relay_db_file: relay.db
 nostr_relay_info_pubkey: ~
 nostr_relay_info_contact: ~
 nostr_relay_info_description: custom relay for https://stemstr.app
 nostr_relay_info_version: 0.1
+database_url: "postgresql://admin:password@postgres:5432/relay?sslmode=disable"
