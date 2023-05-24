@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/fiatjaf/relayer"
-	"github.com/fiatjaf/relayer/storage/postgresql"
+	"github.com/fiatjaf/relayer/v2"
+	"github.com/fiatjaf/relayer/v2/storage/postgresql"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip11"
 )
@@ -18,7 +18,7 @@ const (
 func newRelay(port int, databaseURL, infoPubkey, infoContact, infoDesc, infoVersion string) (*Relay, error) {
 	r := Relay{
 		port:        port,
-		storage:     &postgresql.PostgresBackend{DatabaseURL: databaseURL},
+		storage:     &postgresql.PostgresBackend{DatabaseURL: databaseURL, QueryLimit: 1000},
 		updates:     make(chan nostr.Event),
 		infoPubkey:  infoPubkey,
 		infoContact: infoContact,
