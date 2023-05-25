@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
-	"github.com/fiatjaf/relayer"
-	"github.com/fiatjaf/relayer/storage/postgresql"
+	"github.com/fiatjaf/relayer/v2"
+	"github.com/fiatjaf/relayer/v2/storage/postgresql"
 	"github.com/nbd-wtf/go-nostr"
 	"github.com/nbd-wtf/go-nostr/nip11"
 )
@@ -17,7 +18,7 @@ const (
 func newRelay(port int, databaseURL, infoPubkey, infoContact, infoDesc, infoVersion string) (*Relay, error) {
 	r := Relay{
 		port:        port,
-		storage:     &postgresql.PostgresBackend{DatabaseURL: databaseURL},
+		storage:     &postgresql.PostgresBackend{DatabaseURL: databaseURL, QueryLimit: 1000},
 		updates:     make(chan nostr.Event),
 		infoPubkey:  infoPubkey,
 		infoContact: infoContact,
@@ -55,21 +56,21 @@ func (r *Relay) GetNIP11InformationDocument() nip11.RelayInformationDocument {
 	}
 }
 
-func (r *Relay) Name() string {
+func (r Relay) Name() string {
 	return "Stemstr relay"
 }
 
-func (r *Relay) Storage() relayer.Storage {
+func (r Relay) Storage(ctx context.Context) relayer.Storage {
 	return r.storage
 }
 
-func (r *Relay) OnInitialized(*relayer.Server) {}
+func (r Relay) OnInitialized(*relayer.Server) {}
 
-func (r *Relay) Init() error {
+func (r Relay) Init() error {
 	return nil
 }
 
-func (r *Relay) AcceptEvent(evt *nostr.Event) bool {
+func (r Relay) AcceptEvent(ctx context.Context, evt *nostr.Event) bool {
 	// block events that are too large
 	jsonb, _ := json.Marshal(evt)
 	if len(jsonb) > 10000 {
@@ -93,14 +94,15 @@ func (r *Relay) AcceptEvent(evt *nostr.Event) bool {
 	return true
 }
 
-func (relay *Relay) InjectEvents() chan nostr.Event {
+func (relay Relay) InjectEvents() chan nostr.Event {
 	return relay.updates
 }
 
-func (r *Relay) Start() error {
-	settings := relayer.Settings{
-		Host: "0.0.0.0",
-		Port: fmt.Sprintf("%d", r.port),
+func (r Relay) Start() error {
+	server, err := relayer.NewServer(r)
+	if err != nil {
+		return fmt.Errorf("relayer new server: %w", err)
 	}
-	return relayer.StartConf(settings, r)
+
+	return server.Start("0.0.0.0", r.port)
 }
