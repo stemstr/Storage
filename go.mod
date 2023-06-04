@@ -16,6 +16,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
+replace github.com/fiatjaf/relayer/v2 => ../relayer
+
 require (
 	github.com/SaveTheRbtz/generic-sync-map-go v0.0.0-20230201052002-6c5833b989be // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
