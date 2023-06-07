@@ -3,7 +3,7 @@ module github.com/stemstr/storage
 go 1.20
 
 require (
-	github.com/fiatjaf/relayer/v2 v2.0.1-0.20230524161342-03ecbb9e6c36 // indirect
+	github.com/fiatjaf/relayer/v2 v2.0.1-0.20230605144923-55f0f5a225a0
 	github.com/go-audio/wav v1.0.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/cors v1.2.1
@@ -16,8 +16,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/fiatjaf/relayer/v2 => ../relayer
-
 require (
 	github.com/SaveTheRbtz/generic-sync-map-go v0.0.0-20230201052002-6c5833b989be // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -27,7 +25,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/fiatjaf/relayer/v2 v2.0.1-0.20230524161342-03ecbb9e6c36 // indirect
 	github.com/go-audio/audio v1.0.0 // indirect
 	github.com/go-audio/riff v1.0.0 // indirect
 	github.com/gobwas/httphead v0.1.0 // indirect
