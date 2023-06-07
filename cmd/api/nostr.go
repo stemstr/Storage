@@ -17,8 +17,15 @@ const (
 
 func newRelay(port int, databaseURL, infoPubkey, infoContact, infoDesc, infoVersion string) (*Relay, error) {
 	r := Relay{
-		port:        port,
-		storage:     &postgresql.PostgresBackend{DatabaseURL: databaseURL, QueryLimit: 1000},
+		port: port,
+		storage: &postgresql.PostgresBackend{
+			DatabaseURL:       databaseURL,
+			QueryLimit:        1000,
+			QueryAuthorsLimit: 1000,
+			QueryIDsLimit:     1000,
+			QueryKindsLimit:   10,
+			QueryTagsLimit:    20,
+		},
 		updates:     make(chan nostr.Event),
 		infoPubkey:  infoPubkey,
 		infoContact: infoContact,
