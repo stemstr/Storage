@@ -13,6 +13,7 @@ import (
 
 const (
 	stemstrKindAudio = 1808
+	kindNip78        = 30078
 )
 
 func newRelay(port int, databaseURL, infoPubkey, infoContact, infoDesc, infoVersion string) (*Relay, error) {
@@ -51,7 +52,7 @@ type Relay struct {
 }
 
 func (r *Relay) GetNIP11InformationDocument() nip11.RelayInformationDocument {
-	supportedNIPs := []int{9, 11, 12, 15, 16, 20}
+	supportedNIPs := []int{9, 11, 12, 15, 16, 20, 78}
 	return nip11.RelayInformationDocument{
 		Name:          r.Name(),
 		Description:   r.infoDesc,
@@ -91,7 +92,8 @@ func (r Relay) AcceptEvent(ctx context.Context, evt *nostr.Event) bool {
 		nostr.KindTextNote,
 		nostr.KindContactList,
 		nostr.KindBoost,
-		nostr.KindReaction:
+		nostr.KindReaction,
+		kindNip78:
 	default: // Reject all others
 		return false
 	}
