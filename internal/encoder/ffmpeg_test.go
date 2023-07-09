@@ -41,12 +41,21 @@ func TestHLS(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.mimeType, func(t *testing.T) {
-			_, err := enc.HLS(ctx, EncodeRequest{
+			resp, err := enc.HLS(ctx, EncodeRequest{
 				Mimetype:   tt.mimeType,
 				InputPath:  tt.inputPath,
 				OutputPath: tt.outputPath,
 			})
 			assert.NoError(t, err)
+
+			_, err = os.Stat(resp.IndexFilepath)
+			assert.NoError(t, err)
+
+			assert.NotEqual(t, 0, len(resp.SegmentFilepaths))
+			for _, chunkPath := range resp.SegmentFilepaths {
+				_, err := os.Stat(chunkPath)
+				assert.NoError(t, err)
+			}
 		})
 	}
 }
