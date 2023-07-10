@@ -9,6 +9,7 @@ import (
 
 type Filesystem interface {
 	Read(ctx context.Context, path string) ([]byte, error)
+	Remove(ctx context.Context, path ...string)
 	Write(ctx context.Context, path string, data []byte) error
 }
 
@@ -20,6 +21,12 @@ type filesystem struct{}
 
 func (fs *filesystem) Read(ctx context.Context, path string) ([]byte, error) {
 	return os.ReadFile(path)
+}
+
+func (fs *filesystem) Remove(ctx context.Context, path ...string) {
+	for _, filePath := range path {
+		os.Remove(filePath)
+	}
 }
 
 func (fs *filesystem) Write(ctx context.Context, path string, data []byte) error {

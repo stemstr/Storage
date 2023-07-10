@@ -35,13 +35,6 @@ type ffmpegEncoder struct {
 
 // HLS encodes the provided audio file into HLS chunked mp3s.
 func (e *ffmpegEncoder) HLS(ctx context.Context, req EncodeRequest) (EncodeHLSResponse, error) {
-	// Skip if already exists
-	indexFile := hlsIndexPath(req.OutputPath)
-	if _, err := os.Stat(indexFile); err == nil {
-		log.Printf("HLS: already exists: %v\n", indexFile)
-		return EncodeHLSResponse{}, nil
-	}
-
 	args := defaultHLSArgs(e.opts, req.InputPath, req.OutputPath)
 
 	cmd := exec.Command(e.bin, args...)
@@ -66,19 +59,13 @@ func (e *ffmpegEncoder) HLS(ctx context.Context, req EncodeRequest) (EncodeHLSRe
 
 	return EncodeHLSResponse{
 		Output:           out.String(),
-		IndexFilepath:    indexFile,
+		IndexFilepath:    hlsIndexPath(req.OutputPath),
 		SegmentFilepaths: segments,
 	}, nil
 }
 
 // WAV encodes the provided audio file as a WAV.
 func (e *ffmpegEncoder) WAV(ctx context.Context, req EncodeRequest) (EncodeWAVResponse, error) {
-	// Skip if already exists
-	if _, err := os.Stat(req.OutputPath); err == nil {
-		log.Printf("WAV: already exists: %v\n", req.OutputPath)
-		return EncodeWAVResponse{}, nil
-	}
-
 	var args []string
 	switch strings.ToLower(req.Mimetype) {
 	case "audio/wav", "audio/wave", "audio/x-wav":

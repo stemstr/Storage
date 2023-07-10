@@ -26,11 +26,16 @@ type handlers struct {
 // handleDownloadMedia fetches stored media
 func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	var (
-		ctx = r.Context()
-		sum = chi.URLParam(r, "sum")
+		ctx      = r.Context()
+		filename = chi.URLParam(r, "filename")
 	)
 
-	resp, err := h.svc.GetSample(ctx, sum)
+	// Some early notes did not have a file extension on the download URL.
+	if !strings.HasSuffix(filename, ".wav") {
+		filename += ".wav"
+	}
+
+	resp, err := h.svc.GetSample(ctx, filename)
 	if err != nil {
 		log.Printf("err: svc.GetSample: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -43,6 +48,15 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", resp.ContentType)
 	w.Header().Set("X-Download-Filename", resp.Filename)
 	w.Write(resp.Data)
+}
+
+// handleGetStream redirects requests for stream files to the new CDN.
+// Some early notes have a stream_url pointed at the api.
+func (h *handlers) handleGetStream(w http.ResponseWriter, r *http.Request) {
+	var filename = chi.URLParam(r, "filename")
+
+	cdnURL, _ := url.JoinPath("https://cdn.stemstr.app/stream", filename)
+	http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
 }
 
 // handleGetMetadata fetches stored media metadata
@@ -129,7 +143,7 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	streamPath, _ := url.JoinPath(h.config.StreamBase, resp.MediaID+".m3u8")
-	downloadPath, _ := url.JoinPath(h.config.DownloadBase, resp.MediaID)
+	downloadPath, _ := url.JoinPath(h.config.DownloadBase, resp.MediaID+".wav")
 
 	data, err := json.Marshal(map[string]any{
 		"stream_url":   streamPath,
