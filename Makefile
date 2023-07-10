@@ -1,4 +1,4 @@
-include secrets
+-include secrets
 
 LDFLAGS="-X main.commit=$(shell git rev-parse --short HEAD) -X main.buildDate=$(shell date +"%Y-%m-%dT%H:%M:%S%z")"
 
