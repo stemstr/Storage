@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	db "github.com/stemstr/storage/internal/db/sqlite"
 	"github.com/stemstr/storage/internal/encoder"
 	"github.com/stemstr/storage/internal/mimes"
 	blob "github.com/stemstr/storage/internal/storage/blob"
@@ -25,17 +24,15 @@ var (
 
 type Service struct {
 	cfg Config
-	db  db.DB
 	ls  ls.Filesystem
 	s3  *blob.S3
 	enc encoder.Encoder
 	viz waveform.Generator
 }
 
-func New(cfg Config, db db.DB, ls ls.Filesystem, s3 *blob.S3, enc encoder.Encoder, viz waveform.Generator) (*Service, error) {
+func New(cfg Config, ls ls.Filesystem, s3 *blob.S3, enc encoder.Encoder, viz waveform.Generator) (*Service, error) {
 	return &Service{
 		cfg: cfg,
-		db:  db,
 		ls:  ls,
 		s3:  s3,
 		enc: enc,
@@ -131,20 +128,9 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 		return nil, fmt.Errorf("waveform generate: %w", err)
 	}
 
-	// 4. Write to DB
-	media, err := s.db.CreateMedia(ctx, db.CreateMediaRequest{
-		Size:      int64(len(r.Data)),
-		Sum:       r.Sum,
-		Mimetype:  r.Mimetype,
-		Waveform:  waveform,
-		CreatedBy: r.Pubkey,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("db.CreateMedia: %w", err)
-	}
-	log.Printf("upload: %v created %v\n", media.CreatedBy, media.Mimetype)
-
 	s.ls.Remove(ctx, tmpFiles...)
+
+	log.Printf("upload: %v created %v\n", r.Pubkey, r.Mimetype)
 
 	return &NewSampleResponse{
 		MediaID:  r.Sum,
@@ -179,29 +165,7 @@ func (s *Service) GetSample(ctx context.Context, filename string) (*GetSampleRes
 	}, nil
 }
 
-func (s *Service) GetSampleMetadata(ctx context.Context, sum string) (*GetSampleResponse, error) {
-	media, err := s.db.GetMedia(ctx, sum)
-	if err != nil {
-		return nil, fmt.Errorf("db.GetMedia: %w", err)
-	}
-	if media == nil {
-		return nil, ErrNotFound
-	}
-
-	var (
-		filename    = wavFilename(sum)
-		contentType = mimes.FromFilename(filename)
-	)
-
-	return &GetSampleResponse{
-		Media:       media,
-		Filename:    filename,
-		ContentType: contentType,
-	}, nil
-}
-
 type GetSampleResponse struct {
-	Media       *db.Media
 	ContentType string
 	Filename    string
 	Data        []byte

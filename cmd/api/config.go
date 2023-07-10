@@ -30,7 +30,6 @@ type Config struct {
 	StreamBitrate          string   `yaml:"stream_bitrate" envconfig:"STREAM_BITRATE"`
 	MaxUploadSizeMB        int64    `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
 	AcceptedMimetypes      []string `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
-	DBFile                 string   `yaml:"db_file" envconfig:"DB_FILE"`
 	S3Bucket               string   `yaml:"s3_bucket" envconfig:"S3_BUCKET"`
 
 	// Relay settings

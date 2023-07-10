@@ -59,39 +59,6 @@ func (h *handlers) handleGetStream(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
 }
 
-// handleGetMetadata fetches stored media metadata
-func (h *handlers) handleGetMetadata(w http.ResponseWriter, r *http.Request) {
-	var (
-		ctx = r.Context()
-		sum = chi.URLParam(r, "sum")
-	)
-
-	resp, err := h.svc.GetSampleMetadata(ctx, sum)
-	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			http.Error(w, "not found", http.StatusNotFound)
-		} else {
-			log.Printf("err: svc.GetSampleMetadata: %v", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	data, err := json.Marshal(map[string]any{
-		"waveform":     resp.Media.Waveform,
-		"content_type": resp.ContentType,
-	})
-
-	if err != nil {
-		log.Printf("failed to marshal resp: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
-}
-
 // handleUpload handles user media uploads
 func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -256,26 +223,6 @@ func (h *handlers) handleDebugStream(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
-}
-
-// fileServer serves static files
-func fileServer(r chi.Router, path string, root http.FileSystem) {
-	if strings.ContainsAny(path, "{}*") {
-		panic("FileServer does not permit any URL parameters.")
-	}
-
-	if path != "/" && path[len(path)-1] != '/' {
-		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
-		path += "/"
-	}
-	path += "*"
-
-	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
-		rctx := chi.RouteContext(r.Context())
-		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
-		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
-		fs.ServeHTTP(w, r)
-	})
 }
 
 func validPubkey(pk string) bool {

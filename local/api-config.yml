@@ -8,7 +8,6 @@ wav_storage_dir: ./local/uploads/wav
 stream_ffmpeg: ffmpeg
 stream_chunk_size_seconds: 5
 max_upload_size_mb: 40
-db_file: sqlite.db
 s3_bucket: stemstr-media
 accepted_mimetypes:
   - audio/wav

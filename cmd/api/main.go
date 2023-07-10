@@ -14,7 +14,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/stemstr/storage/internal/db/sqlite"
 	"github.com/stemstr/storage/internal/encoder"
 	"github.com/stemstr/storage/internal/service"
 	blob "github.com/stemstr/storage/internal/storage/blob"
@@ -93,13 +92,6 @@ func main() {
 		Bitrate:          cfg.StreamBitrate,
 	})
 
-	// DB setup
-	db, err := sqlite.New(cfg.DBFile)
-	if err != nil {
-		log.Printf("db err: %v\n", err)
-		os.Exit(1)
-	}
-
 	s3, err := blob.New(ctx, cfg.S3Bucket)
 	if err != nil {
 		log.Printf("s3 err: %v\n", err)
@@ -117,7 +109,7 @@ func main() {
 		viz = waveform.New(enc)
 	)
 
-	svc, err := service.New(svcConfig, db, ls, s3, enc, viz)
+	svc, err := service.New(svcConfig, ls, s3, enc, viz)
 	if err != nil {
 		log.Printf("service err: %v\n", err)
 		os.Exit(1)
@@ -142,7 +134,6 @@ func main() {
 
 	r.Get("/download/{filename}", h.handleDownloadMedia)
 	r.Get("/stream/{filename}", h.handleGetStream)
-	r.Get("/metadata/{sum}", h.handleGetMetadata)
 	r.Post("/upload", h.handleUpload)
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 	r.Get("/debug/stream", h.handleDebugStream)
