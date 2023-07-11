@@ -1,14 +1,8 @@
 port: 9001
-api_path: http://localhost:9001/upload
-stream_base: https://cdn.stemstr.app/stream
-download_base: http://localhost:9001/download
-media_storage_dir: ./local/uploads/original
-stream_storage_dir: ./local/uploads/stream
-wav_storage_dir: ./local/uploads/wav
-stream_ffmpeg: ffmpeg
-stream_chunk_size_seconds: 5
-max_upload_size_mb: 40
+api_host: http://localhost:9001
+cdn_host: https://cdn.stemstr.app
 s3_bucket: stemstr-media
+max_upload_size_mb: 40
 accepted_mimetypes:
   - audio/wav
   - audio/wave
@@ -23,10 +17,12 @@ accepted_mimetypes:
   - audio/x-aiff
   - audio/ogg
   - audio/flac
+stream_ffmpeg: ffmpeg
+stream_chunk_size_seconds: 5
 
 nostr_relay_port: 9000
 nostr_relay_info_pubkey: ~
 nostr_relay_info_contact: ~
 nostr_relay_info_description: custom relay for https://stemstr.app
 nostr_relay_info_version: 0.1
-database_url: "postgresql://admin:password@localhost:5432/relay?sslmode=disable"
+nostr_relay_database_url: "postgresql://admin:password@localhost:5432/relay?sslmode=disable"
