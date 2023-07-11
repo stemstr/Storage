@@ -35,19 +35,18 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 		filename += ".wav"
 	}
 
-	resp, err := h.svc.GetSample(ctx, filename)
+	sample, err := h.svc.GetSample(ctx, filename)
 	if err != nil {
 		log.Printf("err: svc.GetSample: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	downloadCounter.Inc()
-	w.Header().Set("Content-Disposition", "attachment; filename="+resp.Filename)
-	w.Header().Set("Content-Length", strconv.Itoa(len(resp.Data)))
-	w.Header().Set("Content-Type", resp.ContentType)
-	w.Header().Set("X-Download-Filename", resp.Filename)
-	w.Write(resp.Data)
+	w.Header().Set("Content-Disposition", "attachment; filename="+sample.Filename)
+	w.Header().Set("Content-Length", strconv.Itoa(len(sample.Data)))
+	w.Header().Set("Content-Type", sample.ContentType)
+	w.Header().Set("X-Download-Filename", sample.Filename)
+	w.Write(sample.Data)
 }
 
 // handleGetStream redirects requests for stream files to the new CDN.
@@ -55,7 +54,7 @@ func (h *handlers) handleDownloadMedia(w http.ResponseWriter, r *http.Request) {
 func (h *handlers) handleGetStream(w http.ResponseWriter, r *http.Request) {
 	var filename = chi.URLParam(r, "filename")
 
-	cdnURL, _ := url.JoinPath("https://cdn.stemstr.app/stream", filename)
+	cdnURL, _ := url.JoinPath(h.config.CDNHost, "stream", filename)
 	http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
 }
 
@@ -103,30 +102,20 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.svc.NewSample(ctx, req)
+	sample, err := h.svc.NewSample(ctx, req)
 	if err != nil {
+		log.Printf("svc.NewSample: %v\n", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	streamPath, _ := url.JoinPath(h.config.StreamBase, resp.MediaID+".m3u8")
-	downloadPath, _ := url.JoinPath(h.config.DownloadBase, resp.MediaID+".wav")
-
-	data, err := json.Marshal(map[string]any{
-		"stream_url":   streamPath,
-		"download_url": downloadPath,
-		"waveform":     resp.Waveform,
+	resp, _ := json.Marshal(map[string]any{
+		"stream_url":   sample.StreamURL(h.config.CDNHost),
+		"download_url": sample.DownloadURL(h.config.APIHost),
+		"waveform":     sample.Waveform,
 	})
-
-	if err != nil {
-		log.Printf("failed to marshal resp: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	uploadCounter.Inc()
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
+	w.Write(resp)
 }
 
 var (
