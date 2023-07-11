@@ -69,10 +69,14 @@ func (e *ffmpegEncoder) WAV(ctx context.Context, req EncodeRequest) (EncodeWAVRe
 	var args []string
 	switch strings.ToLower(req.Mimetype) {
 	case "audio/wav", "audio/wave", "audio/x-wav":
-		if err := copyFile(req.InputPath, req.OutputPath); err != nil {
-			return EncodeWAVResponse{}, err
+		resp := EncodeWAVResponse{
+			Output:   "",
+			Filepath: req.OutputPath,
 		}
-		return EncodeWAVResponse{}, nil
+		if err := copyFile(req.InputPath, req.OutputPath); err != nil {
+			return resp, err
+		}
+		return resp, nil
 	default:
 		args = defaultWAVArgs(e.opts, req.InputPath, req.OutputPath)
 	}
