@@ -16,26 +16,29 @@ const (
 )
 
 type Config struct {
-	Port                      int      `yaml:"port" envconfig:"PORT"`
-	APIPath                   string   `yaml:"api_path" envconfig:"API_PATH"`
-	StreamBase                string   `yaml:"stream_base" envconfig:"STREAM_BASE"`
-	DownloadBase              string   `yaml:"download_base" envconfig:"DOWNLOAD_BASE"`
-	MediaStorageDir           string   `yaml:"media_storage_dir" envconfig:"MEDIA_STORAGE_DIR"`
-	StreamStorageDir          string   `yaml:"stream_storage_dir" envconfig:"STREAM_STORAGE_DIR"`
-	WavStorageDir             string   `yaml:"wav_storage_dir" envconfig:"WAV_STORAGE_DIR"`
-	StreamFFMPEG              string   `yaml:"stream_ffmpeg" envconfig:"STREAM_FFMPEG"`
-	StreamChunkSizeSeconds    int      `yaml:"stream_chunk_size_seconds" envconfig:"STREAM_CHUNK_SIZE_SECONDS"`
-	StreamCodec               string   `yaml:"stream_codec" envconfig:"STREAM_CODEC"`
-	StreamBitrate             string   `yaml:"stream_bitrate" envconfig:"STREAM_BITRATE"`
-	NostrRelayPort            int      `yaml:"nostr_relay_port" envconfig:"NOSTR_RELAY_PORT"`
-	NostrRelayInfoPubkey      string   `yaml:"nostr_relay_info_pubkey" envconfig:"NOSTR_RELAY_INFO_PUBKEY"`
-	NostrRelayInfoContact     string   `yaml:"nostr_relay_info_contact" envconfig:"NOSTR_RELAY_INFO_CONTACT"`
-	NostrRelayInfoDescription string   `yaml:"nostr_relay_info_description" envconfig:"NOSTR_RELAY_INFO_DESCRIPTION"`
-	NostrRelayInfoVersion     string   `yaml:"nostr_relay_info_version" envconfig:"NOSTR_RELAY_INFO_VERSION"`
-	DBFile                    string   `yaml:"db_file" envconfig:"DB_FILE"`
-	DatabaseURL               string   `yaml:"database_url" envconfig:"DATABASE_URL"`
-	MaxUploadSizeMB           int64    `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
-	AcceptedMimetypes         []string `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
+	// API settings
+	Port                   int      `yaml:"port" envconfig:"PORT"`
+	APIPath                string   `yaml:"api_path" envconfig:"API_PATH"`
+	StreamBase             string   `yaml:"stream_base" envconfig:"STREAM_BASE"`
+	DownloadBase           string   `yaml:"download_base" envconfig:"DOWNLOAD_BASE"`
+	MediaStorageDir        string   `yaml:"media_storage_dir" envconfig:"MEDIA_STORAGE_DIR"`
+	StreamStorageDir       string   `yaml:"stream_storage_dir" envconfig:"STREAM_STORAGE_DIR"`
+	WavStorageDir          string   `yaml:"wav_storage_dir" envconfig:"WAV_STORAGE_DIR"`
+	StreamFFMPEG           string   `yaml:"stream_ffmpeg" envconfig:"STREAM_FFMPEG"`
+	StreamChunkSizeSeconds int      `yaml:"stream_chunk_size_seconds" envconfig:"STREAM_CHUNK_SIZE_SECONDS"`
+	StreamCodec            string   `yaml:"stream_codec" envconfig:"STREAM_CODEC"`
+	StreamBitrate          string   `yaml:"stream_bitrate" envconfig:"STREAM_BITRATE"`
+	MaxUploadSizeMB        int64    `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
+	AcceptedMimetypes      []string `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
+	S3Bucket               string   `yaml:"s3_bucket" envconfig:"S3_BUCKET"`
+
+	// Relay settings
+	NostrRelayPort            int    `yaml:"nostr_relay_port" envconfig:"NOSTR_RELAY_PORT"`
+	NostrRelayInfoPubkey      string `yaml:"nostr_relay_info_pubkey" envconfig:"NOSTR_RELAY_INFO_PUBKEY"`
+	NostrRelayInfoContact     string `yaml:"nostr_relay_info_contact" envconfig:"NOSTR_RELAY_INFO_CONTACT"`
+	NostrRelayInfoDescription string `yaml:"nostr_relay_info_description" envconfig:"NOSTR_RELAY_INFO_DESCRIPTION"`
+	NostrRelayInfoVersion     string `yaml:"nostr_relay_info_version" envconfig:"NOSTR_RELAY_INFO_VERSION"`
+	DatabaseURL               string `yaml:"database_url" envconfig:"DATABASE_URL"`
 }
 
 // Load Config from a yaml file at path.

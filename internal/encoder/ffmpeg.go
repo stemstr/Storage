@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -32,14 +34,7 @@ type ffmpegEncoder struct {
 }
 
 // HLS encodes the provided audio file into HLS chunked mp3s.
-func (e *ffmpegEncoder) HLS(ctx context.Context, req EncodeRequest) (EncodeResponse, error) {
-	// Skip if already exists
-	indexFile := hlsIndexPath(req.OutputPath)
-	if _, err := os.Stat(indexFile); err == nil {
-		log.Printf("HLS: already exists: %v\n", indexFile)
-		return EncodeResponse{}, nil
-	}
-
+func (e *ffmpegEncoder) HLS(ctx context.Context, req EncodeRequest) (EncodeHLSResponse, error) {
 	args := defaultHLSArgs(e.opts, req.InputPath, req.OutputPath)
 
 	cmd := exec.Command(e.bin, args...)
@@ -49,29 +44,39 @@ func (e *ffmpegEncoder) HLS(ctx context.Context, req EncodeRequest) (EncodeRespo
 
 	if err := cmd.Run(); err != nil {
 		log.Printf("encode failure: %v\n cmd=%q", err, cmd.String())
-		return EncodeResponse{}, err
+		return EncodeHLSResponse{}, err
 	}
 
-	return EncodeResponse{
-		Output: out.String(),
+	// PERF: req.OutputPath is a single directory shared for all uploads. This
+	// method will scale with O(n) complexity while media is stored on the same
+	// filesystem. This will not be a problem after filestorage is offloaded to
+	// S3 because the local files will be deleted after successful upload.
+	segments, err := segmentFilepaths(req.OutputPath)
+	if err != nil {
+		log.Printf("segmentFilepaths: %v\n outputPath=%q", err, req.OutputPath)
+		return EncodeHLSResponse{}, err
+	}
+
+	return EncodeHLSResponse{
+		Output:           out.String(),
+		IndexFilepath:    hlsIndexPath(req.OutputPath),
+		SegmentFilepaths: segments,
 	}, nil
 }
 
 // WAV encodes the provided audio file as a WAV.
-func (e *ffmpegEncoder) WAV(ctx context.Context, req EncodeRequest) (EncodeResponse, error) {
-	// Skip if already exists
-	if _, err := os.Stat(req.OutputPath); err == nil {
-		log.Printf("WAV: already exists: %v\n", req.OutputPath)
-		return EncodeResponse{}, nil
-	}
-
+func (e *ffmpegEncoder) WAV(ctx context.Context, req EncodeRequest) (EncodeWAVResponse, error) {
 	var args []string
 	switch strings.ToLower(req.Mimetype) {
 	case "audio/wav", "audio/wave", "audio/x-wav":
-		if err := copyFile(req.InputPath, req.OutputPath); err != nil {
-			return EncodeResponse{}, err
+		resp := EncodeWAVResponse{
+			Output:   "",
+			Filepath: req.OutputPath,
 		}
-		return EncodeResponse{}, nil
+		if err := copyFile(req.InputPath, req.OutputPath); err != nil {
+			return resp, err
+		}
+		return resp, nil
 	default:
 		args = defaultWAVArgs(e.opts, req.InputPath, req.OutputPath)
 	}
@@ -83,11 +88,12 @@ func (e *ffmpegEncoder) WAV(ctx context.Context, req EncodeRequest) (EncodeRespo
 
 	if err := cmd.Run(); err != nil {
 		log.Printf("encode failure: %v\n cmd=%q", err, cmd.String())
-		return EncodeResponse{Output: out.String()}, err
+		return EncodeWAVResponse{Output: out.String()}, err
 	}
 
-	return EncodeResponse{
-		Output: out.String(),
+	return EncodeWAVResponse{
+		Output:   out.String(),
+		Filepath: req.OutputPath,
 	}, nil
 }
 
@@ -97,6 +103,33 @@ func hlsIndexPath(outputPath string) string {
 
 func hlsChunksPath(outputPath string) string {
 	return fmt.Sprintf("%s%%03d.ts", outputPath)
+}
+
+func segmentFilepaths(outputPath string) ([]string, error) {
+	var (
+		indexFile  = hlsIndexPath(outputPath)
+		streamsDir = filepath.Dir(indexFile)
+	)
+
+	// Find stream chunks for this index file in the same directory
+	files, err := ioutil.ReadDir(streamsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+		indexFileBase = filepath.Base(indexFile)
+		relOutput     = filepath.Base(outputPath)
+		segments      []string
+	)
+	for _, f := range files {
+		fn := f.Name()
+		if !strings.EqualFold(fn, indexFileBase) && strings.HasPrefix(fn, relOutput) {
+			segments = append(segments, filepath.Join(streamsDir, fn))
+		}
+	}
+
+	return segments, nil
 }
 
 func defaultHLSArgs(opts EncodeOpts, inputPath, outputPath string) []string {

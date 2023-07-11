@@ -1,12 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 
 	"github.com/go-chi/chi/v5"
@@ -14,7 +14,6 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/stemstr/storage/internal/db/sqlite"
 	"github.com/stemstr/storage/internal/encoder"
 	"github.com/stemstr/storage/internal/service"
 	blob "github.com/stemstr/storage/internal/storage/blob"
@@ -28,6 +27,8 @@ var (
 )
 
 func main() {
+	ctx := context.Background()
+
 	configPath := flag.String("config", "", "location of config file. If non is specified config will be loaded from the environment")
 	flag.Parse()
 
@@ -91,17 +92,9 @@ func main() {
 		Bitrate:          cfg.StreamBitrate,
 	})
 
-	streamURL, err := url.Parse(cfg.StreamBase)
+	s3, err := blob.New(ctx, cfg.S3Bucket)
 	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-	streamRoute := streamURL.Path
-
-	// DB setup
-	db, err := sqlite.New(cfg.DBFile)
-	if err != nil {
-		log.Printf("db err: %v\n", err)
+		log.Printf("s3 err: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -113,11 +106,10 @@ func main() {
 			WAVMediaLocalDir:      cfg.WavStorageDir,
 		}
 		ls  = ls.New()
-		s3  = blob.New()
 		viz = waveform.New(enc)
 	)
 
-	svc, err := service.New(svcConfig, db, ls, s3, enc, viz)
+	svc, err := service.New(svcConfig, ls, s3, enc, viz)
 	if err != nil {
 		log.Printf("service err: %v\n", err)
 		os.Exit(1)
@@ -140,13 +132,11 @@ func main() {
 	}))
 	r.Use(metricsMiddleware)
 
-	r.Get("/download/{sum}", h.handleDownloadMedia)
-	r.Get("/metadata/{sum}", h.handleGetMetadata)
+	r.Get("/download/{filename}", h.handleDownloadMedia)
+	r.Get("/stream/{filename}", h.handleGetStream)
 	r.Post("/upload", h.handleUpload)
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 	r.Get("/debug/stream", h.handleDebugStream)
-
-	fileServer(r, streamRoute, http.Dir(cfg.StreamStorageDir))
 
 	port := fmt.Sprintf(":%d", cfg.Port)
 
