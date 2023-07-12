@@ -63,8 +63,11 @@ func (r NewSampleResponse) DownloadURL(host string) string {
 }
 
 func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampleResponse, error) {
-	tmpDir := os.TempDir()
-	defer os.Remove(tmpDir)
+	tmpDir := filepath.Join(os.TempDir(), r.Sum)
+	if err := os.MkdirAll(tmpDir, 0766); err != nil {
+		return nil, fmt.Errorf("os.MkdirAll %q: %w", tmpDir, err)
+	}
+	defer os.RemoveAll(tmpDir)
 
 	// 1. Save source file to disk
 	sourceMediaPath := filepath.Join(tmpDir, localFilename(r.Sum, r.Mimetype))

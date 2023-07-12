@@ -118,13 +118,12 @@ func segmentFilepaths(outputPath string) ([]string, error) {
 	}
 
 	var (
-		indexFileBase = filepath.Base(indexFile)
-		relOutput     = filepath.Base(outputPath)
-		segments      []string
+		filenameWithoutExt = filepath.Base(outputPath)
+		segments           []string
 	)
 	for _, f := range files {
 		fn := f.Name()
-		if !strings.EqualFold(fn, indexFileBase) && strings.HasPrefix(fn, relOutput) {
+		if strings.HasPrefix(fn, filenameWithoutExt) && strings.HasSuffix(fn, ".ts") {
 			segments = append(segments, filepath.Join(streamsDir, fn))
 		}
 	}
