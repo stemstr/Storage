@@ -95,6 +95,7 @@ func (r Relay) AcceptEvent(ctx context.Context, evt *nostr.Event) bool {
 		nostr.KindBoost,
 		nostr.KindReaction,
 		kindNip78,
+		9735, // zaps
 		kindNip94:
 	default: // Reject all others
 		return false
