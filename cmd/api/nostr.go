@@ -11,44 +11,28 @@ import (
 	"github.com/nbd-wtf/go-nostr/nip11"
 )
 
-var defaultAllowedKinds = []int{
-	nostr.KindSetMetadata,
-	nostr.KindTextNote,
-	nostr.KindContactList,
-	nostr.KindBoost,
-	nostr.KindReaction,
-	1808,  // Stemstr audio note
-	30078, // NIP-78
-	1063,  // NIP-94
-}
+const (
+	stemstrKindAudio = 1808
+	kindNip78        = 30078
+	kindNip94        = 1063
+)
 
-type relayConfig struct {
-	Port             int
-	DatabaseURL      string
-	AllowedKinds     []int
-	Nip11Pubkey      string
-	Nip11Contact     string
-	Nip11Description string
-	Nip11Version     string
-}
-
-// func newRelay(port int, databaseURL, infoPubkey, infoContact, infoDesc, infoVersion string) (*Relay, error) {
-func newRelay(cfg relayConfig) (*Relay, error) {
-	if len(cfg.AllowedKinds) == 0 {
-		cfg.AllowedKinds = defaultAllowedKinds
-	}
-
+func newRelay(port int, databaseURL, infoPubkey, infoContact, infoDesc, infoVersion string) (*Relay, error) {
 	r := Relay{
-		cfg: cfg,
+		port: port,
 		storage: &postgresql.PostgresBackend{
-			DatabaseURL:       cfg.DatabaseURL,
+			DatabaseURL:       databaseURL,
 			QueryLimit:        1000,
 			QueryAuthorsLimit: 1000,
 			QueryIDsLimit:     1000,
 			QueryKindsLimit:   10,
 			QueryTagsLimit:    20,
 		},
-		updates: make(chan nostr.Event),
+		updates:     make(chan nostr.Event),
+		infoPubkey:  infoPubkey,
+		infoContact: infoContact,
+		infoDesc:    infoDesc,
+		infoVersion: infoVersion,
 	}
 
 	if err := r.storage.Init(); err != nil {
@@ -59,20 +43,25 @@ func newRelay(cfg relayConfig) (*Relay, error) {
 }
 
 type Relay struct {
-	cfg     relayConfig
-	storage *postgresql.PostgresBackend
-	updates chan nostr.Event
+	port        int
+	storage     *postgresql.PostgresBackend
+	updates     chan nostr.Event
+	infoPubkey  string
+	infoContact string
+	infoDesc    string
+	infoVersion string
 }
 
 func (r *Relay) GetNIP11InformationDocument() nip11.RelayInformationDocument {
+	supportedNIPs := []int{9, 11, 12, 15, 16, 20, 78, 94}
 	return nip11.RelayInformationDocument{
 		Name:          r.Name(),
-		Description:   r.cfg.Nip11Description,
-		PubKey:        r.cfg.Nip11Pubkey,
-		Contact:       r.cfg.Nip11Contact,
-		SupportedNIPs: []int{9, 11, 12, 15, 16, 20, 78, 94},
+		Description:   r.infoDesc,
+		PubKey:        r.infoPubkey,
+		Contact:       r.infoContact,
+		SupportedNIPs: supportedNIPs,
 		Software:      "https://github.com/Stemstr",
-		Version:       r.cfg.Nip11Version,
+		Version:       r.infoVersion,
 	}
 }
 
@@ -97,15 +86,17 @@ func (r Relay) AcceptEvent(ctx context.Context, evt *nostr.Event) bool {
 		return false
 	}
 
-	kindAllowed := false
-	for _, kind := range r.cfg.AllowedKinds {
-		if evt.Kind == kind {
-			kindAllowed = true
-			break
-		}
-	}
-
-	if !kindAllowed {
+	switch evt.Kind {
+	case // Allow the following events
+		stemstrKindAudio,
+		nostr.KindSetMetadata,
+		nostr.KindTextNote,
+		nostr.KindContactList,
+		nostr.KindBoost,
+		nostr.KindReaction,
+		kindNip78,
+		kindNip94:
+	default: // Reject all others
 		return false
 	}
 
@@ -124,5 +115,5 @@ func (r Relay) Start() error {
 		return fmt.Errorf("relayer new server: %w", err)
 	}
 
-	return server.Start("0.0.0.0", r.cfg.Port)
+	return server.Start("0.0.0.0", r.port)
 }

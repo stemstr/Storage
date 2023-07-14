@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/stemstr/storage/internal/encoder"
 	"github.com/stemstr/storage/internal/service"
@@ -28,28 +29,50 @@ var (
 func main() {
 	ctx := context.Background()
 
-	configPath := flag.String("config", "config.yaml", "location of config file. If non is specified config will be loaded from the environment")
+	configPath := flag.String("config", "", "location of config file. If non is specified config will be loaded from the environment")
 	flag.Parse()
 
 	log.Printf("build info: commit: %v date: %v\n", commit, buildDate)
-	log.Printf("loading config from %s\n", *configPath)
 
-	var cfg Config
-	if err := cfg.Load(*configPath); err != nil {
+	var (
+		cfg Config
+		err error
+	)
+	if *configPath != "" {
+		log.Printf("loading config from file %q\n", *configPath)
+		err = cfg.Load(*configPath)
+	} else {
+		log.Println("loading config from env")
+		err = cfg.LoadFromEnv()
+	}
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	// Ensure the local directories exist
+	if err := createDirIfNotExists(cfg.MediaStorageDir); err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	if err := createDirIfNotExists(cfg.StreamStorageDir); err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	if err := createDirIfNotExists(cfg.WavStorageDir); err != nil {
 		log.Println(err)
 		os.Exit(1)
 	}
 
 	// Relay setup
-	relay, err := newRelay(relayConfig{
-		Port:             cfg.NostrRelayPort,
-		DatabaseURL:      cfg.NostrRelayDatabaseURL,
-		AllowedKinds:     cfg.NostrRelayAllowedKinds,
-		Nip11Pubkey:      cfg.NostrRelayInfoPubkey,
-		Nip11Contact:     cfg.NostrRelayInfoContact,
-		Nip11Description: cfg.NostrRelayInfoDescription,
-		Nip11Version:     cfg.NostrRelayInfoVersion,
-	})
+	relay, err := newRelay(
+		cfg.NostrRelayPort,
+		cfg.DatabaseURL,
+		cfg.NostrRelayInfoPubkey,
+		cfg.NostrRelayInfoContact,
+		cfg.NostrRelayInfoDescription,
+		cfg.NostrRelayInfoVersion,
+	)
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
@@ -77,11 +100,16 @@ func main() {
 
 	// Service setup
 	var (
+		svcConfig = service.Config{
+			OriginalMediaLocalDir: cfg.MediaStorageDir,
+			StreamMediaLocalDir:   cfg.StreamStorageDir,
+			WAVMediaLocalDir:      cfg.WavStorageDir,
+		}
 		ls  = ls.New()
 		viz = waveform.New(enc)
 	)
 
-	svc, err := service.New(ls, s3, enc, viz)
+	svc, err := service.New(svcConfig, ls, s3, enc, viz)
 	if err != nil {
 		log.Printf("service err: %v\n", err)
 		os.Exit(1)
@@ -102,15 +130,18 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))
+	r.Use(metricsMiddleware)
 
 	r.Get("/download/{filename}", h.handleDownloadMedia)
 	r.Get("/stream/{filename}", h.handleGetStream)
 	r.Post("/upload", h.handleUpload)
+	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 	r.Get("/debug/stream", h.handleDebugStream)
 
 	port := fmt.Sprintf(":%d", cfg.Port)
 
 	log.Printf("api listening on %v\n", port)
+
 	http.ListenAndServe(port, r)
 }
 

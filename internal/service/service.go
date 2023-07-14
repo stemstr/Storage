@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/url"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -25,14 +23,16 @@ var (
 )
 
 type Service struct {
+	cfg Config
 	ls  ls.Filesystem
 	s3  *blob.S3
 	enc encoder.Encoder
 	viz waveform.Generator
 }
 
-func New(ls ls.Filesystem, s3 *blob.S3, enc encoder.Encoder, viz waveform.Generator) (*Service, error) {
+func New(cfg Config, ls ls.Filesystem, s3 *blob.S3, enc encoder.Encoder, viz waveform.Generator) (*Service, error) {
 	return &Service{
+		cfg: cfg,
 		ls:  ls,
 		s3:  s3,
 		enc: enc,
@@ -52,25 +52,15 @@ type NewSampleResponse struct {
 	Waveform []int
 }
 
-func (r NewSampleResponse) StreamURL(host string) string {
-	u, _ := url.JoinPath(host, "stream", r.MediaID+".m3u8")
-	return u
-
-}
-func (r NewSampleResponse) DownloadURL(host string) string {
-	u, _ := url.JoinPath(host, "download", r.MediaID+".wav")
-	return u
-}
-
 func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampleResponse, error) {
-	tmpDir := os.TempDir()
-	defer os.Remove(tmpDir)
+	var tmpFiles []string
 
-	// 1. Save source file to disk
-	sourceMediaPath := filepath.Join(tmpDir, localFilename(r.Sum, r.Mimetype))
-	if err := s.ls.Write(ctx, sourceMediaPath, r.Data); err != nil {
+	// 1. Save original file to disk
+	rawMediaPath := filepath.Join(s.cfg.OriginalMediaLocalDir, localFilename(r.Sum, r.Mimetype))
+	if err := s.ls.Write(ctx, rawMediaPath, r.Data); err != nil {
 		return nil, fmt.Errorf("filesystem.Write: %w", err)
 	}
+	tmpFiles = append(tmpFiles, rawMediaPath)
 
 	// 2. Transcoding
 	var (
@@ -80,13 +70,13 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 	wg.Add(2)
 
 	// Encode and upload HLS
-	streamMediaPath := filepath.Join(tmpDir, streamFilename(r.Sum))
-	go func(mimetype, sourceMediaPath, streamMediaPath string) {
+	streamMediaPath := filepath.Join(s.cfg.StreamMediaLocalDir, streamFilename(r.Sum))
+	go func(mimetype, rawMediaPath, streamMediaPath string) {
 		defer wg.Done()
 
 		resp, err := s.enc.HLS(ctx, encoder.EncodeRequest{
 			Mimetype:   mimetype,
-			InputPath:  sourceMediaPath,
+			InputPath:  rawMediaPath,
 			OutputPath: streamMediaPath,
 		})
 		if err != nil {
@@ -100,16 +90,19 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 			errs = append(errs, fmt.Errorf("uploadHLSToS3: %w", err))
 		}
 
-	}(r.Mimetype, sourceMediaPath, streamMediaPath)
+		tmpFiles = append(tmpFiles, resp.IndexFilepath)
+		tmpFiles = append(tmpFiles, resp.SegmentFilepaths...)
+
+	}(r.Mimetype, rawMediaPath, streamMediaPath)
 
 	// Encode and upload WAV
-	wavMediaPath := filepath.Join(tmpDir, wavFilename(r.Sum))
-	go func(mimetype, sourceMediaPath, wavMediaPath string) {
+	wavMediaPath := filepath.Join(s.cfg.WAVMediaLocalDir, wavFilename(r.Sum))
+	go func(mimetype, rawMediaPath, wavMediaPath string) {
 		defer wg.Done()
 
 		resp, err := s.enc.WAV(ctx, encoder.EncodeRequest{
 			Mimetype:   mimetype,
-			InputPath:  sourceMediaPath,
+			InputPath:  rawMediaPath,
 			OutputPath: wavMediaPath,
 		})
 		if err != nil {
@@ -123,7 +116,9 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 			errs = append(errs, fmt.Errorf("uploadWAVToS3: %w", err))
 		}
 
-	}(r.Mimetype, sourceMediaPath, wavMediaPath)
+		tmpFiles = append(tmpFiles, resp.Filepath)
+
+	}(r.Mimetype, rawMediaPath, wavMediaPath)
 
 	wg.Wait()
 
@@ -136,6 +131,8 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 	if err != nil {
 		return nil, fmt.Errorf("waveform generate: %w", err)
 	}
+
+	s.ls.Remove(ctx, tmpFiles...)
 
 	log.Printf("upload: %v created %v\n", r.Pubkey, r.Mimetype)
 
