@@ -74,6 +74,13 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// NOTE: for beta release we are limiting to a hardcoded
+	// set of whitelisted users.
+	if !pubkeyIsAllowed(h.config.AllowedPubkeys, req.Pubkey) {
+		http.Error(w, "please signup for the stemstr beta", http.StatusForbidden)
+		return
+	}
+
 	sum := fmt.Sprintf("%x", sha256.Sum256(req.Data))
 	if req.Sum != sum {
 		http.Error(w, "sum does not match content", http.StatusBadRequest)
@@ -179,6 +186,23 @@ func (h *handlers) parseUploadRequest(r *http.Request) (*service.NewSampleReques
 		Sum:      sum,
 		Pubkey:   pk,
 	}, nil
+}
+
+func pubkeyIsAllowed(pubkeys []string, pubkey string) bool {
+	// If no whitelist of pubkeys are provided, it's allowed
+	if len(pubkeys) == 0 {
+		return true
+	}
+
+	allowed := false
+	for _, allowedPubkey := range pubkeys {
+		if strings.EqualFold(allowedPubkey, pubkey) {
+			allowed = true
+			break
+		}
+	}
+
+	return allowed
 }
 
 func (h *handlers) handleDebugStream(w http.ResponseWriter, r *http.Request) {
