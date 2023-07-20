@@ -31,6 +31,7 @@ type Config struct {
 	MaxUploadSizeMB        int64    `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
 	AcceptedMimetypes      []string `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
 	S3Bucket               string   `yaml:"s3_bucket" envconfig:"S3_BUCKET"`
+	AllowedPubkeys         []string `yaml:"allowed_pubkeys" envconfig:"ALLOWED_PUBKEYS"`
 }
 
 // Load Config from a yaml file at path.
