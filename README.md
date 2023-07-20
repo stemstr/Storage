@@ -1,6 +1,6 @@
 # storage
 
-The backend API and relay for https://stemstr.app
+The backend API for https://stemstr.app
 
 ## Running locally
 
@@ -16,8 +16,4 @@ Run with [Docker](https://docs.docker.com/compose/install/)
 make run-docker
 ```
 
-You now have the Stemstr API and Relay running on localhost:
-
-- relay: `ws://localhost:9000`
-- api: `http://localhost:9001`
-
+You now have the Stemstr API and Relay running on `localhost:9001`.
