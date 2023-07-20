@@ -31,14 +31,6 @@ type Config struct {
 	MaxUploadSizeMB        int64    `yaml:"max_upload_size_mb" envconfig:"MAX_UPLOAD_SIZE_MB"`
 	AcceptedMimetypes      []string `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
 	S3Bucket               string   `yaml:"s3_bucket" envconfig:"S3_BUCKET"`
-
-	// Relay settings
-	NostrRelayPort            int    `yaml:"nostr_relay_port" envconfig:"NOSTR_RELAY_PORT"`
-	NostrRelayInfoPubkey      string `yaml:"nostr_relay_info_pubkey" envconfig:"NOSTR_RELAY_INFO_PUBKEY"`
-	NostrRelayInfoContact     string `yaml:"nostr_relay_info_contact" envconfig:"NOSTR_RELAY_INFO_CONTACT"`
-	NostrRelayInfoDescription string `yaml:"nostr_relay_info_description" envconfig:"NOSTR_RELAY_INFO_DESCRIPTION"`
-	NostrRelayInfoVersion     string `yaml:"nostr_relay_info_version" envconfig:"NOSTR_RELAY_INFO_VERSION"`
-	DatabaseURL               string `yaml:"database_url" envconfig:"DATABASE_URL"`
 }
 
 // Load Config from a yaml file at path.
