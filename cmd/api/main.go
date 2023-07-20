@@ -64,27 +64,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Relay setup
-	relay, err := newRelay(
-		cfg.NostrRelayPort,
-		cfg.DatabaseURL,
-		cfg.NostrRelayInfoPubkey,
-		cfg.NostrRelayInfoContact,
-		cfg.NostrRelayInfoDescription,
-		cfg.NostrRelayInfoVersion,
-	)
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-
-	go func() {
-		if err := relay.Start(); err != nil {
-			log.Printf("relay err: %v\n", err)
-			os.Exit(1)
-		}
-	}()
-
 	// Encoder setup
 	enc := encoder.New(cfg.StreamFFMPEG, encoder.EncodeOpts{
 		ChunkSizeSeconds: cfg.StreamChunkSizeSeconds,
