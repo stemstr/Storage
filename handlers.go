@@ -11,16 +11,19 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/stemstr/storage/internal/mimes"
 	"github.com/stemstr/storage/internal/service"
+	"github.com/stemstr/storage/internal/subscription"
 )
 
 type handlers struct {
 	config Config
 	svc    *service.Service
+	subs   *subscription.SubscriptionService
 }
 
 // handleDownloadMedia fetches stored media
@@ -59,6 +62,109 @@ func (h *handlers) handleGetStream(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
 }
 
+// handleGetSubscription fetches the active subscription for a pubkey
+func (h *handlers) handleGetSubscription(w http.ResponseWriter, r *http.Request) {
+	var (
+		ctx    = r.Context()
+		pubkey = chi.URLParam(r, "pubkey")
+	)
+
+	sub, err := h.subs.GetActiveSubscription(ctx, pubkey)
+	if err != nil {
+		if errors.Is(err, subscription.ErrSubscriptionNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+
+		log.Printf("err: subs.GetLatestSubscription: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonb, _ := json.Marshal(map[string]any{
+		"pass":       sub.Duration,
+		"created_at": sub.CreatedAt.Unix(),
+		"expires_at": sub.ExpiresAt.Unix(),
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonb)
+}
+
+// handleCreateSubscription creates a new subscription. If pubkey already
+// has an active subscription, it will be returned.
+func (h *handlers) handleCreateSubscription(w http.ResponseWriter, r *http.Request) {
+	var (
+		ctx    = r.Context()
+		pubkey = chi.URLParam(r, "pubkey")
+		pass   = r.URL.Query().Get("pass")
+	)
+
+	if pass == "" {
+		http.Error(w, "must provide pass query param", http.StatusBadRequest)
+		return
+	}
+
+	var (
+		now    = time.Now()
+		amount int
+		expiry time.Time
+	)
+	switch pass {
+	case "7d":
+		amount = 1000
+		expiry = now.Add(time.Hour * 24 * 7)
+	case "30d":
+		amount = 10000
+		expiry = now.Add(time.Hour * 24 * 30)
+	case "180d":
+		amount = 60000
+		expiry = now.Add(time.Hour * 24 * 180)
+	default:
+		log.Printf("createSubscription: invalid pass %q", pass)
+		http.Error(w, "invalid pass value. must be one of: 7d, 30d, 180d", http.StatusBadRequest)
+		return
+	}
+
+	existingSub, err := h.subs.GetActiveSubscription(ctx, pubkey)
+	if err != nil && !errors.Is(err, subscription.ErrSubscriptionNotFound) {
+		log.Printf("err: subs.GetSubscriptionStatus: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if existingSub != nil {
+		log.Printf("createSubscription: already exists! %#v", *existingSub)
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+
+	sub, err := h.subs.CreateSubscription(ctx, subscription.Subscription{
+		Pubkey:    pubkey,
+		Duration:  pass,
+		Amount:    amount,
+		CreatedAt: now,
+		ExpiresAt: expiry,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonb, _ := json.Marshal(map[string]any{
+		"lightning_invoice": sub.LightningInvoice,
+		"pass":              sub.Duration,
+		"created_at":        sub.CreatedAt.Unix(),
+		"expires_at":        sub.ExpiresAt.Unix(),
+	})
+
+	w.WriteHeader(http.StatusPaymentRequired)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonb)
+	return
+
+}
+
 // handleUpload handles user media uploads
 func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -74,12 +180,13 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// NOTE: for beta release we are limiting to a hardcoded
-	// set of whitelisted users.
-	if !pubkeyIsAllowed(h.config.AllowedPubkeys, req.Pubkey) {
-		http.Error(w, "please signup for the stemstr beta", http.StatusForbidden)
+	sub, err := h.subs.GetActiveSubscription(ctx, req.Pubkey)
+	if err != nil {
+		log.Printf("upload: subscription not found for %q, err: %v", req.Pubkey, err)
+		http.Error(w, "Subscription required", http.StatusPaymentRequired)
 		return
 	}
+	log.Printf("upload: active sub: %#v\n", *sub)
 
 	sum := fmt.Sprintf("%x", sha256.Sum256(req.Data))
 	if req.Sum != sum {
