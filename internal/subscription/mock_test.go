@@ -18,7 +18,8 @@ func (m *mockSubscriptionRepo) CreateSubscription(ctx context.Context, sub Subsc
 func (m *mockSubscriptionRepo) GetActiveSubscription(ctx context.Context, pubkey string) (*Subscription, error) {
 	return m.GetActiveSubscriptionSub, m.GetActiveSubscriptionErr
 }
-func (m *mockSubscriptionRepo) UpdateSubscription(ctx context.Context, sub Subscription) error {
+func (m *mockSubscriptionRepo) UpdateStatus(ctx context.Context, id int64, status SubscriptionStatus) error {
+	m.GetActiveSubscriptionSub.Status = status
 	return m.UpdateSubscriptionErr
 }
 

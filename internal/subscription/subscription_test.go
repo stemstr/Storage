@@ -21,7 +21,7 @@ func TestGetActiveSubscription(t *testing.T) {
 			name: "active paid subscription",
 			repo: &mockSubscriptionRepo{
 				GetActiveSubscriptionSub: &Subscription{
-					ID:        "123",
+					ID:        123,
 					Pubkey:    "xxx",
 					Days:      30,
 					Sats:      5000,
@@ -34,7 +34,7 @@ func TestGetActiveSubscription(t *testing.T) {
 			ln:     &mockLNProvider{},
 			pubkey: "xxx",
 			sub: &Subscription{
-				ID:        "123",
+				ID:        123,
 				Pubkey:    "xxx",
 				Days:      30,
 				Sats:      5000,
@@ -48,7 +48,7 @@ func TestGetActiveSubscription(t *testing.T) {
 			name: "expired subscription",
 			repo: &mockSubscriptionRepo{
 				GetActiveSubscriptionSub: &Subscription{
-					ID:        "123",
+					ID:        123,
 					Pubkey:    "xxx",
 					Days:      30,
 					Sats:      5000,
@@ -66,7 +66,7 @@ func TestGetActiveSubscription(t *testing.T) {
 			name: "unpaid subscription",
 			repo: &mockSubscriptionRepo{
 				GetActiveSubscriptionSub: &Subscription{
-					ID:               "123",
+					ID:               123,
 					Pubkey:           "xxx",
 					Days:             30,
 					Sats:             5000,
@@ -82,7 +82,7 @@ func TestGetActiveSubscription(t *testing.T) {
 			},
 			pubkey: "xxx",
 			sub: &Subscription{
-				ID:               "123",
+				ID:               123,
 				Pubkey:           "xxx",
 				Days:             30,
 				Sats:             5000,
@@ -98,7 +98,7 @@ func TestGetActiveSubscription(t *testing.T) {
 			name: "since paid subscription",
 			repo: &mockSubscriptionRepo{
 				GetActiveSubscriptionSub: &Subscription{
-					ID:               "123",
+					ID:               123,
 					Pubkey:           "xxx",
 					Days:             30,
 					Sats:             5000,
@@ -114,7 +114,7 @@ func TestGetActiveSubscription(t *testing.T) {
 			},
 			pubkey: "xxx",
 			sub: &Subscription{
-				ID:               "123",
+				ID:               123,
 				Pubkey:           "xxx",
 				Days:             30,
 				Sats:             5000,
@@ -159,7 +159,7 @@ func TestCreateSubscription(t *testing.T) {
 			name: "basic subscription",
 			repo: &mockSubscriptionRepo{
 				CreateSubscriptionSub: &Subscription{
-					ID:               "123",
+					ID:               123,
 					Pubkey:           "xxx",
 					Days:             30,
 					Sats:             5000,
@@ -178,7 +178,7 @@ func TestCreateSubscription(t *testing.T) {
 			},
 			pubkey: "xxx",
 			sub: Subscription{
-				ID:        "123",
+				ID:        123,
 				Pubkey:    "xxx",
 				Days:      30,
 				Sats:      5000,

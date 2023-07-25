@@ -2,64 +2,103 @@ package pg
 
 import (
 	"context"
-	"strconv"
-	"time"
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 
 	sub "github.com/stemstr/storage/internal/subscription"
 )
 
-// TODO: implement against postgres. for now it's a dummy inmem for hacking.
-
 func New(dbConnStr string) (*Repo, error) {
+	db, err := sqlx.Connect("postgres", dbConnStr)
+	if err != nil {
+		return nil, fmt.Errorf("sqlx.Connect: %w", err)
+	}
+
+	// sqlx default is 0 (unlimited), while postgresql by default accepts up to 100 connections
+	db.SetMaxOpenConns(80)
+
+	// TODO: migrations
+	_, err = db.Exec(`
+CREATE TABLE IF NOT EXISTS subscription (
+	id SERIAL PRIMARY KEY,
+	pubkey TEXT NOT NULL,
+	days INTEGER NOT NULL,
+	sats INTEGER NOT NULL,
+	invoice_id TEXT NOT NULL,
+	status TEXT NOT NULL,
+	lightning_invoice TEXT NOT NULL,
+	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	expires_at TIMESTAMP NOT NULL,
+	updated_at TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS pubkeyidx ON subscription(pubkey);
+    `)
+	if err != nil {
+		return nil, fmt.Errorf("db.Exec schema: %w", err)
+	}
+
 	return &Repo{
-		m: map[string][]sub.Subscription{},
+		db: db,
 	}, nil
 }
 
 type Repo struct {
-	m map[string][]sub.Subscription
+	db *sqlx.DB
 }
 
 func (r *Repo) CreateSubscription(ctx context.Context, s sub.Subscription) (*sub.Subscription, error) {
-	n := 1
-	for _, subs := range r.m {
-		n += len(subs)
+	query, args, err := sqlx.Named(`INSERT INTO subscription (pubkey, days, sats, invoice_id, status, lightning_invoice, expires_at) 
+VALUES (:pubkey, :days, :sats, :invoice_id, :status, :lightning_invoice, :expires_at) RETURNING id;`, s)
+	if err != nil {
+		return nil, fmt.Errorf("sqlx.Named createSub: %w", err)
+	}
+	query = r.db.Rebind(query)
+	var id int
+	if err := r.db.Get(&id, query, args...); err != nil {
+		return nil, fmt.Errorf("db.Get createSub: %w", err)
 	}
 
-	s.ID = strconv.Itoa(n)
-	subs, ok := r.m[s.Pubkey]
-	if !ok {
-		subs = []sub.Subscription{s}
+	return r.getSubscription(ctx, int64(id))
+}
+
+func (r *Repo) GetActiveSubscription(ctx context.Context, pubkey string) (*sub.Subscription, error) {
+	const query = "SELECT * FROM subscription WHERE pubkey=$1 ORDER BY created_at DESC LIMIT 1;"
+
+	var s sub.Subscription
+	if err := r.db.Get(&s, query, pubkey); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("db.Get active sub: %w", err)
 	}
-	subs = append(subs, s)
-	r.m[s.Pubkey] = subs
 
 	return &s, nil
 }
 
-func (r *Repo) GetActiveSubscription(ctx context.Context, pubkey string) (*sub.Subscription, error) {
-	subs, ok := r.m[pubkey]
-	if !ok {
-		return nil, nil
-	}
+func (r *Repo) UpdateStatus(ctx context.Context, id int64, status sub.SubscriptionStatus) error {
+	const query = `UPDATE subscription SET status=$2, updated_at=NOW() WHERE id=$1`
+	params := []any{id, status}
 
-	return &subs[len(subs)-1], nil
-}
-
-func (r *Repo) UpdateSubscription(ctx context.Context, s sub.Subscription) error {
-	subs, ok := r.m[s.Pubkey]
-	if !ok {
-		return nil
-	}
-
-	var updatedSubs []sub.Subscription
-	for _, _sub := range subs {
-		if _sub.ID == s.ID {
-			_sub.Status = s.Status
-			_sub.UpdatedAt = time.Now()
-		}
-		updatedSubs = append(updatedSubs, _sub)
+	_, err := r.db.ExecContext(ctx, query, params...)
+	if err != nil {
+		return fmt.Errorf("db.Exec update sub: %w", err)
 	}
 
 	return nil
+}
+
+func (r *Repo) getSubscription(ctx context.Context, id int64) (*sub.Subscription, error) {
+	const sql = "SELECT * FROM subscription WHERE id=$1;"
+
+	var s sub.Subscription
+	if err := r.db.Get(&s, sql, id); err != nil {
+		return nil, fmt.Errorf("db.Get sub: %w", err)
+	}
+
+	return &s, nil
 }

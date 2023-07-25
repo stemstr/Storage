@@ -9,7 +9,9 @@ require (
 	github.com/go-audio/wav v1.0.0
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/cors v1.2.1
+	github.com/jmoiron/sqlx v1.3.5
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/lib/pq v1.2.0
 	github.com/nodeless-io/go-nodeless v0.1.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stretchr/testify v1.8.2

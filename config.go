@@ -35,6 +35,7 @@ type Config struct {
 	NodelessAPIKey         string   `yaml:"nodeless_apikey" envconfig:"NODELESS_APIKEY"`
 	NodelessStoreID        string   `yaml:"nodeless_storeid" envconfig:"NODELESS_STOREID"`
 	NodelessTestnet        bool     `yaml:"nodeless_testnet" envconfig:"NODELESS_TESTNET"`
+	SubscriptionDB         string   `yaml:"subscription_db"`
 	SubscriptionOptions    []struct {
 		Days int `yaml:"days" json:"days"`
 		Sats int `yaml:"sats" json:"sats"`

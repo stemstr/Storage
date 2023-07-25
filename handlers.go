@@ -80,14 +80,20 @@ func (h *handlers) handleGetSubscription(w http.ResponseWriter, r *http.Request)
 
 	sub, err := h.subs.GetActiveSubscription(ctx, pubkey)
 	if err != nil {
-		if errors.Is(err, subscription.ErrSubscriptionNotFound) {
+		switch {
+		case errors.Is(err, subscription.ErrSubscriptionNotFound):
+			log.Printf("sub not found: pk=%v\n", pubkey)
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
+		case errors.Is(err, subscription.ErrSubscriptionExpired):
+			log.Printf("sub expired: pk=%v\n", pubkey)
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		default:
+			log.Printf("err: subs.GetSubscriptionStatus: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
-
-		log.Printf("err: subs.GetLatestSubscription: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 
 	jsonb, _ := json.Marshal(map[string]any{
@@ -133,15 +139,24 @@ func (h *handlers) handleCreateSubscription(w http.ResponseWriter, r *http.Reque
 	expiry := now.Add(time.Hour * 24 * time.Duration(days))
 
 	existingSub, err := h.subs.GetActiveSubscription(ctx, pubkey)
-	if err != nil && !errors.Is(err, subscription.ErrSubscriptionNotFound) {
-		log.Printf("err: subs.GetSubscriptionStatus: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	if err != nil {
+		switch {
+		case errors.Is(err, subscription.ErrSubscriptionNotFound):
+			// noop
+			log.Printf("sub not found: pk=%v\n", pubkey)
+		case errors.Is(err, subscription.ErrSubscriptionExpired):
+			// noop
+			log.Printf("sub expired: pk=%v\n", pubkey)
+		default:
+			log.Printf("err: subs.GetSubscriptionStatus: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if existingSub != nil {
 		log.Printf("createSubscription: already exists! %#v", *existingSub)
-		http.Error(w, err.Error(), http.StatusConflict)
+		http.Error(w, "active subscription", http.StatusConflict)
 		return
 	}
 

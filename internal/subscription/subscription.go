@@ -21,7 +21,7 @@ type SubscriptionService struct {
 type subscriptionRepo interface {
 	CreateSubscription(ctx context.Context, sub Subscription) (*Subscription, error)
 	GetActiveSubscription(ctx context.Context, pubkey string) (*Subscription, error)
-	UpdateSubscription(ctx context.Context, sub Subscription) error
+	UpdateStatus(ctx context.Context, id int64, status SubscriptionStatus) error
 }
 
 type lnProvider interface {
@@ -56,9 +56,7 @@ func (s *SubscriptionService) GetActiveSubscription(ctx context.Context, pubkey 
 			return sub, ErrSubscriptionUnpaid
 		}
 
-		sub.Status = StatusPaid
-		sub.UpdatedAt = time.Now()
-		if err := s.UpdateSubscription(ctx, *sub); err != nil {
+		if err := s.repo.UpdateStatus(ctx, sub.ID, StatusPaid); err != nil {
 			return nil, fmt.Errorf("UpdateSub: %w", err)
 		}
 
@@ -86,21 +84,17 @@ func (s *SubscriptionService) CreateSubscription(ctx context.Context, sub Subscr
 	return newSub, nil
 }
 
-func (s *SubscriptionService) UpdateSubscription(ctx context.Context, sub Subscription) error {
-	return nil
-}
-
 type Subscription struct {
-	ID               string             `json:"id"`
-	Pubkey           string             `json:"pubkey"`
-	Days             int                `json:"days"`
-	Sats             int                `json:"sats"`
-	InvoiceID        string             `json:"invoice_id"`
-	Status           SubscriptionStatus `json:"status"`
-	LightningInvoice string             `json:"lightning_invoice"`
-	CreatedAt        time.Time          `json:"created_at"`
-	ExpiresAt        time.Time          `json:"expires_at"`
-	UpdatedAt        time.Time          `json:"updated_at"`
+	ID               int64              `json:"id" db:"id"`
+	Pubkey           string             `json:"pubkey" db:"pubkey"`
+	Days             int                `json:"days" db:"days"`
+	Sats             int                `json:"sats" db:"sats"`
+	InvoiceID        string             `json:"invoice_id" db:"invoice_id"`
+	Status           SubscriptionStatus `json:"status" db:"status"`
+	LightningInvoice string             `json:"lightning_invoice" db:"lightning_invoice"`
+	CreatedAt        time.Time          `json:"created_at" db:"created_at"`
+	ExpiresAt        time.Time          `json:"expires_at" db:"expires_at"`
+	UpdatedAt        *time.Time         `json:"updated_at" db:"updated_at"`
 }
 
 type SubscriptionStatus string

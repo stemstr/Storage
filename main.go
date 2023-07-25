@@ -86,7 +86,7 @@ func main() {
 		log.Printf("nodeless err: %v\n", err)
 		os.Exit(1)
 	}
-	subRepo, err := pg.New("fixme")
+	subRepo, err := pg.New(cfg.SubscriptionDB)
 	if err != nil {
 		log.Printf("subRepo err: %v\n", err)
 		os.Exit(1)
