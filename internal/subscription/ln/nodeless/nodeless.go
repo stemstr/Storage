@@ -31,7 +31,7 @@ type Client struct {
 func (c *Client) CreateInvoice(ctx context.Context, s sub.Subscription) (*sub.Invoice, error) {
 	invoice, err := c.CreateStoreInvoice(ctx, nodeless.CreateInvoiceRequest{
 		StoreID:  c.storeID,
-		Amount:   float64(s.Amount),
+		Amount:   float64(s.Sats),
 		Currency: "SATS",
 	})
 	if err != nil {

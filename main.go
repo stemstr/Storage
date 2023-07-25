@@ -134,6 +134,7 @@ func main() {
 
 	r.Get("/download/{filename}", h.handleDownloadMedia)
 	r.Get("/stream/{filename}", h.handleGetStream)
+	r.Get("/subscription", h.handleGetSubscriptionOptions)
 	r.Get("/subscription/{pubkey}", h.handleGetSubscription)
 	r.Post("/subscription/{pubkey}", h.handleCreateSubscription)
 	r.Post("/upload", h.handleUpload)

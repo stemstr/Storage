@@ -91,12 +91,10 @@ func (s *SubscriptionService) UpdateSubscription(ctx context.Context, sub Subscr
 }
 
 type Subscription struct {
-	ID     string `json:"id"`
-	Pubkey string `json:"pubkey"`
-	// Duration is the subscription duration: 1d, 7d, 30d, 180d
-	Duration string `json:"duration"`
-	// Amount is the amount of sats for the subscription
-	Amount           int                `json:"amount"`
+	ID               string             `json:"id"`
+	Pubkey           string             `json:"pubkey"`
+	Days             int                `json:"days"`
+	Sats             int                `json:"sats"`
 	InvoiceID        string             `json:"invoice_id"`
 	Status           SubscriptionStatus `json:"status"`
 	LightningInvoice string             `json:"lightning_invoice"`

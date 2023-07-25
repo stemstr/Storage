@@ -62,6 +62,15 @@ func (h *handlers) handleGetStream(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
 }
 
+// handleGetSubscriptionOptions returns subscription options
+func (h *handlers) handleGetSubscriptionOptions(w http.ResponseWriter, r *http.Request) {
+	jsonb, _ := json.Marshal(h.config.SubscriptionOptions)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonb)
+	return
+}
+
 // handleGetSubscription fetches the active subscription for a pubkey
 func (h *handlers) handleGetSubscription(w http.ResponseWriter, r *http.Request) {
 	var (
@@ -82,7 +91,7 @@ func (h *handlers) handleGetSubscription(w http.ResponseWriter, r *http.Request)
 	}
 
 	jsonb, _ := json.Marshal(map[string]any{
-		"pass":       sub.Duration,
+		"days":       sub.Days,
 		"created_at": sub.CreatedAt.Unix(),
 		"expires_at": sub.ExpiresAt.Unix(),
 	})
@@ -95,36 +104,33 @@ func (h *handlers) handleGetSubscription(w http.ResponseWriter, r *http.Request)
 // has an active subscription, it will be returned.
 func (h *handlers) handleCreateSubscription(w http.ResponseWriter, r *http.Request) {
 	var (
-		ctx    = r.Context()
-		pubkey = chi.URLParam(r, "pubkey")
-		pass   = r.URL.Query().Get("pass")
+		ctx     = r.Context()
+		pubkey  = chi.URLParam(r, "pubkey")
+		daysStr = r.URL.Query().Get("days")
 	)
 
-	if pass == "" {
-		http.Error(w, "must provide pass query param", http.StatusBadRequest)
+	if daysStr == "" {
+		http.Error(w, "must provide days query param", http.StatusBadRequest)
+		return
+	}
+	days, err := strconv.Atoi(daysStr)
+	if err != nil {
+		http.Error(w, "days must be a valid subscription days", http.StatusBadRequest)
 		return
 	}
 
-	var (
-		now    = time.Now()
-		amount int
-		expiry time.Time
-	)
-	switch pass {
-	case "7d":
-		amount = 1000
-		expiry = now.Add(time.Hour * 24 * 7)
-	case "30d":
-		amount = 10000
-		expiry = now.Add(time.Hour * 24 * 30)
-	case "180d":
-		amount = 60000
-		expiry = now.Add(time.Hour * 24 * 180)
-	default:
-		log.Printf("createSubscription: invalid pass %q", pass)
-		http.Error(w, "invalid pass value. must be one of: 7d, 30d, 180d", http.StatusBadRequest)
+	subOptions := map[int]int{}
+	for _, opt := range h.config.SubscriptionOptions {
+		subOptions[opt.Days] = opt.Sats
+	}
+
+	sats, ok := subOptions[days]
+	if !ok {
+		http.Error(w, "invalid subscription days", http.StatusBadRequest)
 		return
 	}
+	now := time.Now()
+	expiry := now.Add(time.Hour * 24 * time.Duration(days))
 
 	existingSub, err := h.subs.GetActiveSubscription(ctx, pubkey)
 	if err != nil && !errors.Is(err, subscription.ErrSubscriptionNotFound) {
@@ -141,8 +147,8 @@ func (h *handlers) handleCreateSubscription(w http.ResponseWriter, r *http.Reque
 
 	sub, err := h.subs.CreateSubscription(ctx, subscription.Subscription{
 		Pubkey:    pubkey,
-		Duration:  pass,
-		Amount:    amount,
+		Days:      days,
+		Sats:      sats,
 		CreatedAt: now,
 		ExpiresAt: expiry,
 	})
@@ -153,7 +159,7 @@ func (h *handlers) handleCreateSubscription(w http.ResponseWriter, r *http.Reque
 
 	jsonb, _ := json.Marshal(map[string]any{
 		"lightning_invoice": sub.LightningInvoice,
-		"pass":              sub.Duration,
+		"days":              sub.Days,
 		"created_at":        sub.CreatedAt.Unix(),
 		"expires_at":        sub.ExpiresAt.Unix(),
 	})
