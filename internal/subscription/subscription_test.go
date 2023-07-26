@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetActiveSubscription(t *testing.T) {
+func TestGetActiveSubscriptions(t *testing.T) {
 	var tests = []struct {
 		name   string
 		repo   subscriptionRepo
@@ -20,15 +20,17 @@ func TestGetActiveSubscription(t *testing.T) {
 		{
 			name: "active paid subscription",
 			repo: &mockSubscriptionRepo{
-				GetActiveSubscriptionSub: &Subscription{
-					ID:        123,
-					Pubkey:    "xxx",
-					Days:      30,
-					Sats:      5000,
-					InvoiceID: "lnxxx",
-					Status:    StatusPaid,
-					CreatedAt: time.Now(),
-					ExpiresAt: time.Now().Add(time.Hour * 24),
+				GetActiveSubscriptionSubs: []Subscription{
+					{
+						ID:        123,
+						Pubkey:    "xxx",
+						Days:      30,
+						Sats:      5000,
+						InvoiceID: "lnxxx",
+						Status:    StatusPaid,
+						CreatedAt: time.Now(),
+						ExpiresAt: time.Now().Add(time.Hour * 24),
+					},
 				},
 			},
 			ln:     &mockLNProvider{},
@@ -45,36 +47,20 @@ func TestGetActiveSubscription(t *testing.T) {
 			},
 		},
 		{
-			name: "expired subscription",
-			repo: &mockSubscriptionRepo{
-				GetActiveSubscriptionSub: &Subscription{
-					ID:        123,
-					Pubkey:    "xxx",
-					Days:      30,
-					Sats:      5000,
-					InvoiceID: "lnxxx",
-					Status:    StatusPaid,
-					CreatedAt: time.Now(),
-					ExpiresAt: time.Now().Add(time.Hour * -24),
-				},
-			},
-			ln:     &mockLNProvider{},
-			pubkey: "xxx",
-			err:    ErrSubscriptionExpired,
-		},
-		{
 			name: "unpaid subscription",
 			repo: &mockSubscriptionRepo{
-				GetActiveSubscriptionSub: &Subscription{
-					ID:               123,
-					Pubkey:           "xxx",
-					Days:             30,
-					Sats:             5000,
-					InvoiceID:        "uuid",
-					Status:           StatusUnpaid,
-					LightningInvoice: "lnbc123",
-					CreatedAt:        time.Now(),
-					ExpiresAt:        time.Now().Add(time.Hour * 24),
+				GetActiveSubscriptionSubs: []Subscription{
+					{
+						ID:               123,
+						Pubkey:           "xxx",
+						Days:             30,
+						Sats:             5000,
+						InvoiceID:        "uuid",
+						Status:           StatusUnpaid,
+						LightningInvoice: "lnbc123",
+						CreatedAt:        time.Now(),
+						ExpiresAt:        time.Now().Add(time.Hour * 24),
+					},
 				},
 			},
 			ln: &mockLNProvider{
@@ -92,21 +78,23 @@ func TestGetActiveSubscription(t *testing.T) {
 				CreatedAt:        time.Now(),
 				ExpiresAt:        time.Now().Add(time.Hour * 24),
 			},
-			err: ErrSubscriptionUnpaid,
+			err: ErrSubscriptionNotFound,
 		},
 		{
 			name: "since paid subscription",
 			repo: &mockSubscriptionRepo{
-				GetActiveSubscriptionSub: &Subscription{
-					ID:               123,
-					Pubkey:           "xxx",
-					Days:             30,
-					Sats:             5000,
-					InvoiceID:        "uuid",
-					Status:           StatusUnpaid,
-					LightningInvoice: "lnbc123",
-					CreatedAt:        time.Now(),
-					ExpiresAt:        time.Now().Add(time.Hour * 24),
+				GetActiveSubscriptionSubs: []Subscription{
+					{
+						ID:               123,
+						Pubkey:           "xxx",
+						Days:             30,
+						Sats:             5000,
+						InvoiceID:        "uuid",
+						Status:           StatusUnpaid,
+						LightningInvoice: "lnbc123",
+						CreatedAt:        time.Now(),
+						ExpiresAt:        time.Now().Add(time.Hour * 24),
+					},
 				},
 			},
 			ln: &mockLNProvider{
@@ -124,7 +112,6 @@ func TestGetActiveSubscription(t *testing.T) {
 				CreatedAt:        time.Now(),
 				ExpiresAt:        time.Now().Add(time.Hour * 24),
 			},
-			err: ErrSubscriptionUnpaid,
 		},
 	}
 

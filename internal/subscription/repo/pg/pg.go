@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -66,18 +67,26 @@ VALUES (:pubkey, :days, :sats, :invoice_id, :status, :lightning_invoice, :expire
 	return r.getSubscription(ctx, int64(id))
 }
 
-func (r *Repo) GetActiveSubscription(ctx context.Context, pubkey string) (*sub.Subscription, error) {
-	const query = "SELECT * FROM subscription WHERE pubkey=$1 ORDER BY created_at DESC LIMIT 1;"
+func (r *Repo) GetActiveSubscriptions(ctx context.Context, pubkey string) ([]sub.Subscription, error) {
+	const query = "SELECT * FROM subscription WHERE pubkey=$1 ORDER BY created_at DESC;"
 
-	var s sub.Subscription
-	if err := r.db.Get(&s, query, pubkey); err != nil {
+	var subs []sub.Subscription
+	if err := r.db.Select(&subs, query, pubkey); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("db.Get active sub: %w", err)
 	}
 
-	return &s, nil
+	now := time.Now()
+	var notExpired []sub.Subscription
+	for _, s := range subs {
+		if s.ExpiresAt.After(now) {
+			notExpired = append(notExpired, s)
+		}
+	}
+
+	return notExpired, nil
 }
 
 func (r *Repo) UpdateStatus(ctx context.Context, id int64, status sub.SubscriptionStatus) error {

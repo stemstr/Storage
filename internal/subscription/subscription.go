@@ -20,7 +20,7 @@ type SubscriptionService struct {
 
 type subscriptionRepo interface {
 	CreateSubscription(ctx context.Context, sub Subscription) (*Subscription, error)
-	GetActiveSubscription(ctx context.Context, pubkey string) (*Subscription, error)
+	GetActiveSubscriptions(ctx context.Context, pubkey string) ([]Subscription, error)
 	UpdateStatus(ctx context.Context, id int64, status SubscriptionStatus) error
 }
 
@@ -32,38 +32,45 @@ type lnProvider interface {
 // GetActiveSubscription fetches the active subscription for a pubkey.
 // An error is returned if the subscription is not found, unpaid, or expired.
 func (s *SubscriptionService) GetActiveSubscription(ctx context.Context, pubkey string) (*Subscription, error) {
-	sub, err := s.repo.GetActiveSubscription(ctx, pubkey)
+	subs, err := s.repo.GetActiveSubscriptions(ctx, pubkey)
 	if err != nil {
-		return nil, fmt.Errorf("repo.GetActiveSub: %w", err)
+		return nil, fmt.Errorf("repo.GetActiveSubs: %w", err)
 	}
 
-	if sub == nil {
+	if subs == nil {
 		return nil, ErrSubscriptionNotFound
 	}
 
-	// Is the subscription expired?
-	if sub.ExpiresAt.Before(time.Now()) {
-		return nil, ErrSubscriptionExpired
+	// If any non-expired subscription is paid, return it
+	for _, sub := range subs {
+		if sub.Status == StatusPaid {
+			return &sub, nil
+		}
 	}
 
-	if sub.Status == StatusUnpaid {
-		// Has the invoice has been paid since we last checked?
-		paid, err := s.ln.IsInvoicePaid(ctx, sub.InvoiceID)
-		if err != nil {
-			return nil, fmt.Errorf("GetLatestSub: %w", err)
-		}
-		if !paid {
-			return sub, ErrSubscriptionUnpaid
-		}
+	// Otherwise check each non-expired subscription to see if it's
+	// since been paid.
+	for _, sub := range subs {
+		if sub.Status == StatusUnpaid {
+			paid, err := s.ln.IsInvoicePaid(ctx, sub.InvoiceID)
+			if err != nil {
+				return nil, fmt.Errorf("GetLatestSub.IsInvoicePaid: %w", err)
+			}
+			if !paid {
+				continue
+			}
 
-		if err := s.repo.UpdateStatus(ctx, sub.ID, StatusPaid); err != nil {
-			return nil, fmt.Errorf("UpdateSub: %w", err)
-		}
+			// It's been paid!
+			sub.Status = StatusPaid
+			if err := s.repo.UpdateStatus(ctx, sub.ID, StatusPaid); err != nil {
+				return nil, fmt.Errorf("UpdateSub status: %w", err)
+			}
 
-		return sub, nil
+			return &sub, nil
+		}
 	}
 
-	return sub, nil
+	return nil, ErrSubscriptionNotFound
 }
 
 func (s *SubscriptionService) CreateSubscription(ctx context.Context, sub Subscription) (*Subscription, error) {

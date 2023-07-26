@@ -5,21 +5,20 @@ import (
 )
 
 type mockSubscriptionRepo struct {
-	CreateSubscriptionSub    *Subscription
-	CreateSubscriptionErr    error
-	GetActiveSubscriptionSub *Subscription
-	GetActiveSubscriptionErr error
-	UpdateSubscriptionErr    error
+	CreateSubscriptionSub     *Subscription
+	CreateSubscriptionErr     error
+	GetActiveSubscriptionSubs []Subscription
+	GetActiveSubscriptionErr  error
+	UpdateSubscriptionErr     error
 }
 
 func (m *mockSubscriptionRepo) CreateSubscription(ctx context.Context, sub Subscription) (*Subscription, error) {
 	return m.CreateSubscriptionSub, m.CreateSubscriptionErr
 }
-func (m *mockSubscriptionRepo) GetActiveSubscription(ctx context.Context, pubkey string) (*Subscription, error) {
-	return m.GetActiveSubscriptionSub, m.GetActiveSubscriptionErr
+func (m *mockSubscriptionRepo) GetActiveSubscriptions(ctx context.Context, pubkey string) ([]Subscription, error) {
+	return m.GetActiveSubscriptionSubs, m.GetActiveSubscriptionErr
 }
 func (m *mockSubscriptionRepo) UpdateStatus(ctx context.Context, id int64, status SubscriptionStatus) error {
-	m.GetActiveSubscriptionSub.Status = status
 	return m.UpdateSubscriptionErr
 }
 
