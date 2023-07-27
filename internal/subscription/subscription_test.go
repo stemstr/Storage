@@ -12,7 +12,7 @@ func TestGetActiveSubscriptions(t *testing.T) {
 	var tests = []struct {
 		name   string
 		repo   subscriptionRepo
-		ln     lnProvider
+		ln     LNProvider
 		pubkey string
 		sub    *Subscription
 		err    error
@@ -117,7 +117,7 @@ func TestGetActiveSubscriptions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			svc, err := New(tt.repo, tt.ln)
+			svc, err := New(tt.repo, tt.ln, "mock")
 			assert.NoError(t, err)
 
 			ctx := context.Background()
@@ -137,7 +137,7 @@ func TestCreateSubscription(t *testing.T) {
 	var tests = []struct {
 		name   string
 		repo   subscriptionRepo
-		ln     lnProvider
+		ln     LNProvider
 		pubkey string
 		sub    Subscription
 		err    error
@@ -179,7 +179,7 @@ func TestCreateSubscription(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			svc, err := New(tt.repo, tt.ln)
+			svc, err := New(tt.repo, tt.ln, "mock")
 			assert.NoError(t, err)
 
 			ctx := context.Background()

@@ -6,16 +6,18 @@ import (
 	"time"
 )
 
-func New(repo subscriptionRepo, ln lnProvider) (*SubscriptionService, error) {
+func New(repo subscriptionRepo, ln LNProvider, lnProviderType string) (*SubscriptionService, error) {
 	return &SubscriptionService{
-		repo: repo,
-		ln:   ln,
+		repo:           repo,
+		ln:             ln,
+		lnProviderType: lnProviderType,
 	}, nil
 }
 
 type SubscriptionService struct {
-	repo subscriptionRepo
-	ln   lnProvider
+	repo           subscriptionRepo
+	ln             LNProvider
+	lnProviderType string
 }
 
 type subscriptionRepo interface {
@@ -24,7 +26,7 @@ type subscriptionRepo interface {
 	UpdateStatus(ctx context.Context, id int64, status SubscriptionStatus) error
 }
 
-type lnProvider interface {
+type LNProvider interface {
 	CreateInvoice(ctx context.Context, sub Subscription) (*Invoice, error)
 	IsInvoicePaid(ctx context.Context, id string) (bool, error)
 }
@@ -79,6 +81,7 @@ func (s *SubscriptionService) CreateSubscription(ctx context.Context, sub Subscr
 		return nil, fmt.Errorf("CreateInvoice: %w", err)
 	}
 
+	sub.Provider = s.lnProviderType
 	sub.InvoiceID = invoice.ID
 	sub.Status = StatusUnpaid
 	sub.LightningInvoice = invoice.LightningInvoice
@@ -97,6 +100,7 @@ type Subscription struct {
 	Days             int                `json:"days" db:"days"`
 	Sats             int                `json:"sats" db:"sats"`
 	InvoiceID        string             `json:"invoice_id" db:"invoice_id"`
+	Provider         string             `json:"provider" db:"provider"`
 	Status           SubscriptionStatus `json:"status" db:"status"`
 	LightningInvoice string             `json:"lightning_invoice" db:"lightning_invoice"`
 	CreatedAt        time.Time          `json:"created_at" db:"created_at"`
@@ -114,5 +118,4 @@ const (
 type Invoice struct {
 	ID               string `json:"id"`
 	LightningInvoice string `json:"lightning_invoice"`
-	QRCode           string `json:"qr_code"`
 }

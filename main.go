@@ -20,6 +20,7 @@ import (
 	ls "github.com/stemstr/storage/internal/storage/filesystem"
 	"github.com/stemstr/storage/internal/subscription"
 	"github.com/stemstr/storage/internal/subscription/ln/nodeless"
+	"github.com/stemstr/storage/internal/subscription/ln/zbd"
 	"github.com/stemstr/storage/internal/subscription/repo/pg"
 	"github.com/stemstr/storage/internal/waveform"
 )
@@ -81,17 +82,31 @@ func main() {
 	}
 
 	// Subscriptions setup
-	lnProvider, err := nodeless.New(cfg.NodelessAPIKey, cfg.NodelessStoreID, cfg.NodelessTestnet)
-	if err != nil {
-		log.Printf("nodeless err: %v\n", err)
+	var lnProvider subscription.LNProvider
+	switch cfg.LightningProvider {
+	case "nodeless":
+		lnProvider, err = nodeless.New(cfg.NodelessAPIKey, cfg.NodelessStoreID, cfg.NodelessTestnet)
+		if err != nil {
+			log.Printf("nodeless err: %v\n", err)
+			os.Exit(1)
+		}
+	case "zbd":
+		lnProvider, err = zbd.New(cfg.ZBDAPIKey)
+		if err != nil {
+			log.Printf("zbd err: %v\n", err)
+			os.Exit(1)
+		}
+	default:
+		log.Printf("unknown lightning_provider %q. must be 'nodeless' or 'zbd'", cfg.LightningProvider)
 		os.Exit(1)
 	}
+
 	subRepo, err := pg.New(cfg.SubscriptionDB)
 	if err != nil {
 		log.Printf("subRepo err: %v\n", err)
 		os.Exit(1)
 	}
-	subService, err := subscription.New(subRepo, lnProvider)
+	subService, err := subscription.New(subRepo, lnProvider, cfg.LightningProvider)
 	if err != nil {
 		log.Printf("subRepo err: %v\n", err)
 		os.Exit(1)

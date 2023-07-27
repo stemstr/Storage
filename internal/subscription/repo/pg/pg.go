@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS subscription (
 	days INTEGER NOT NULL,
 	sats INTEGER NOT NULL,
 	invoice_id TEXT NOT NULL,
+	provider TEXT NOT NULL,
 	status TEXT NOT NULL,
 	lightning_invoice TEXT NOT NULL,
 	created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS subscription (
 );
 
 CREATE INDEX IF NOT EXISTS pubkeyidx ON subscription(pubkey);
+CREATE INDEX IF NOT EXISTS provideridx ON subscription(provider);
     `)
 	if err != nil {
 		return nil, fmt.Errorf("db.Exec schema: %w", err)
@@ -53,8 +55,8 @@ type Repo struct {
 }
 
 func (r *Repo) CreateSubscription(ctx context.Context, s sub.Subscription) (*sub.Subscription, error) {
-	query, args, err := sqlx.Named(`INSERT INTO subscription (pubkey, days, sats, invoice_id, status, lightning_invoice, expires_at) 
-VALUES (:pubkey, :days, :sats, :invoice_id, :status, :lightning_invoice, :expires_at) RETURNING id;`, s)
+	query, args, err := sqlx.Named(`INSERT INTO subscription (pubkey, days, sats, invoice_id, provider, status, lightning_invoice, expires_at) 
+VALUES (:pubkey, :days, :sats, :invoice_id, :provider, :status, :lightning_invoice, :expires_at) RETURNING id;`, s)
 	if err != nil {
 		return nil, fmt.Errorf("sqlx.Named createSub: %w", err)
 	}

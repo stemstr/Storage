@@ -32,9 +32,11 @@ type Config struct {
 	AcceptedMimetypes      []string `yaml:"accepted_mimetypes" envconfig:"ACCEPTED_MIMETYPES"`
 	S3Bucket               string   `yaml:"s3_bucket" envconfig:"S3_BUCKET"`
 	AllowedPubkeys         []string `yaml:"allowed_pubkeys" envconfig:"ALLOWED_PUBKEYS"`
+	LightningProvider      string   `yaml:"lightning_provider" envconfig:"LIGHTNING_PROVIDER"`
 	NodelessAPIKey         string   `yaml:"nodeless_apikey" envconfig:"NODELESS_APIKEY"`
 	NodelessStoreID        string   `yaml:"nodeless_storeid" envconfig:"NODELESS_STOREID"`
 	NodelessTestnet        bool     `yaml:"nodeless_testnet" envconfig:"NODELESS_TESTNET"`
+	ZBDAPIKey              string   `yaml:"zbd_apikey" envconfig:"ZBD_APIKEY"`
 	SubscriptionDB         string   `yaml:"subscription_db"`
 	SubscriptionOptions    []struct {
 		Days int `yaml:"days" json:"days"`
