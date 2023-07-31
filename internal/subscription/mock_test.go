@@ -21,6 +21,9 @@ func (m *mockSubscriptionRepo) GetActiveSubscriptions(ctx context.Context, pubke
 func (m *mockSubscriptionRepo) UpdateStatus(ctx context.Context, id int64, status SubscriptionStatus) error {
 	return m.UpdateSubscriptionErr
 }
+func (m *mockSubscriptionRepo) UpdateStatusByInvoiceID(ctx context.Context, id string, status SubscriptionStatus) error {
+	return m.UpdateSubscriptionErr
+}
 
 type mockLNProvider struct {
 	CreateInvoiceInvoice *Invoice

@@ -103,6 +103,29 @@ func (r *Repo) UpdateStatus(ctx context.Context, id int64, status sub.Subscripti
 	return nil
 }
 
+func (r *Repo) UpdateStatusByInvoiceID(ctx context.Context, invoiceID string, status sub.SubscriptionStatus) error {
+	const query = `UPDATE subscription SET status=$2, updated_at=NOW() WHERE invoice_id=$1`
+	params := []any{invoiceID, status}
+
+	resp, err := r.db.ExecContext(ctx, query, params...)
+	if err != nil {
+		return fmt.Errorf("db.Exec update sub: %w", err)
+	}
+
+	n, err := resp.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("dbResp.RowsAffected: %w", err)
+	}
+	switch {
+	case n == 0:
+		return fmt.Errorf("invoice not found")
+	case n == 1:
+		return nil
+	default:
+		return fmt.Errorf("expected one invoice, found multiple")
+	}
+}
+
 func (r *Repo) getSubscription(ctx context.Context, id int64) (*sub.Subscription, error) {
 	const sql = "SELECT * FROM subscription WHERE id=$1;"
 
