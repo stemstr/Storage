@@ -11,16 +11,19 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/stemstr/storage/internal/mimes"
 	"github.com/stemstr/storage/internal/service"
+	"github.com/stemstr/storage/internal/subscription"
 )
 
 type handlers struct {
 	config Config
 	svc    *service.Service
+	subs   *subscription.SubscriptionService
 }
 
 // handleDownloadMedia fetches stored media
@@ -59,6 +62,130 @@ func (h *handlers) handleGetStream(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, cdnURL, http.StatusTemporaryRedirect)
 }
 
+// handleGetSubscriptionOptions returns subscription options
+func (h *handlers) handleGetSubscriptionOptions(w http.ResponseWriter, r *http.Request) {
+	jsonb, _ := json.Marshal(h.config.SubscriptionOptions)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonb)
+	return
+}
+
+// handleGetSubscription fetches the active subscription for a pubkey
+func (h *handlers) handleGetSubscription(w http.ResponseWriter, r *http.Request) {
+	var (
+		ctx    = r.Context()
+		pubkey = chi.URLParam(r, "pubkey")
+	)
+
+	sub, err := h.subs.GetActiveSubscription(ctx, pubkey)
+	if err != nil {
+		switch {
+		case errors.Is(err, subscription.ErrSubscriptionNotFound):
+			log.Printf("sub not found: pk=%v\n", pubkey)
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		case errors.Is(err, subscription.ErrSubscriptionExpired):
+			log.Printf("sub expired: pk=%v\n", pubkey)
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		default:
+			log.Printf("err: subs.GetSubscriptionStatus: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	jsonb, _ := json.Marshal(map[string]any{
+		"days":       sub.Days,
+		"created_at": sub.CreatedAt.Unix(),
+		"expires_at": sub.ExpiresAt.Unix(),
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonb)
+}
+
+// handleCreateSubscription creates a new subscription. If pubkey already
+// has an active subscription, it will be returned.
+func (h *handlers) handleCreateSubscription(w http.ResponseWriter, r *http.Request) {
+	var (
+		ctx     = r.Context()
+		pubkey  = chi.URLParam(r, "pubkey")
+		daysStr = r.URL.Query().Get("days")
+	)
+
+	if daysStr == "" {
+		http.Error(w, "must provide days query param", http.StatusBadRequest)
+		return
+	}
+	days, err := strconv.Atoi(daysStr)
+	if err != nil {
+		http.Error(w, "days must be a valid subscription days", http.StatusBadRequest)
+		return
+	}
+
+	subOptions := map[int]int{}
+	for _, opt := range h.config.SubscriptionOptions {
+		subOptions[opt.Days] = opt.Sats
+	}
+
+	sats, ok := subOptions[days]
+	if !ok {
+		http.Error(w, "invalid subscription days", http.StatusBadRequest)
+		return
+	}
+	now := time.Now()
+	expiry := now.Add(time.Hour * 24 * time.Duration(days))
+
+	existingSub, err := h.subs.GetActiveSubscription(ctx, pubkey)
+	if err != nil {
+		switch {
+		case errors.Is(err, subscription.ErrSubscriptionNotFound):
+			// noop
+			log.Printf("sub not found: pk=%v\n", pubkey)
+		case errors.Is(err, subscription.ErrSubscriptionExpired):
+			// noop
+			log.Printf("sub expired: pk=%v\n", pubkey)
+		default:
+			log.Printf("err: subs.GetSubscriptionStatus: %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if existingSub != nil {
+		log.Printf("createSubscription: already exists! %#v", *existingSub)
+		http.Error(w, "active subscription", http.StatusConflict)
+		return
+	}
+
+	sub, err := h.subs.CreateSubscription(ctx, subscription.Subscription{
+		Pubkey:    pubkey,
+		Days:      days,
+		Sats:      sats,
+		CreatedAt: now,
+		ExpiresAt: expiry,
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	jsonb, _ := json.Marshal(map[string]any{
+		"lightning_invoice": sub.LightningInvoice,
+		"days":              sub.Days,
+		"created_at":        sub.CreatedAt.Unix(),
+		"expires_at":        sub.ExpiresAt.Unix(),
+	})
+
+	w.WriteHeader(http.StatusPaymentRequired)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonb)
+	return
+
+}
+
 // handleUpload handles user media uploads
 func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -74,12 +201,13 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// NOTE: for beta release we are limiting to a hardcoded
-	// set of whitelisted users.
-	if !pubkeyIsAllowed(h.config.AllowedPubkeys, req.Pubkey) {
-		http.Error(w, "please signup for the stemstr beta", http.StatusForbidden)
+	sub, err := h.subs.GetActiveSubscription(ctx, req.Pubkey)
+	if err != nil {
+		log.Printf("upload: subscription not found for %q, err: %v", req.Pubkey, err)
+		http.Error(w, "Subscription required", http.StatusPaymentRequired)
 		return
 	}
+	log.Printf("upload: active sub: %#v\n", *sub)
 
 	sum := fmt.Sprintf("%x", sha256.Sum256(req.Data))
 	if req.Sum != sum {

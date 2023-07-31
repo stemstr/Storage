@@ -23,6 +23,11 @@ accepted_mimetypes:
   - image/jpg
   - image/png
 media_storage_dir: ./files
+subscription_options:
+  - days: 7
+    sats: 1000
+  - days: 14
+    sats: 2000
 `))
 	assert.NoError(t, err)
 
@@ -34,6 +39,8 @@ media_storage_dir: ./files
 	assert.Equal(t, "http://localhost:9000/download", cfg.DownloadBase)
 	assert.Equal(t, "http://localhost:9000/stream", cfg.StreamBase)
 	assert.Equal(t, []string{"image/jpg", "image/png"}, cfg.AcceptedMimetypes)
+	assert.Len(t, cfg.SubscriptionOptions, 2)
+	assert.Equal(t, 7, cfg.SubscriptionOptions[0].Days)
 }
 
 func TestLoadConfigFromEnv(t *testing.T) {

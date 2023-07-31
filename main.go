@@ -18,6 +18,10 @@ import (
 	"github.com/stemstr/storage/internal/service"
 	blob "github.com/stemstr/storage/internal/storage/blob"
 	ls "github.com/stemstr/storage/internal/storage/filesystem"
+	"github.com/stemstr/storage/internal/subscription"
+	"github.com/stemstr/storage/internal/subscription/ln/nodeless"
+	"github.com/stemstr/storage/internal/subscription/ln/zbd"
+	"github.com/stemstr/storage/internal/subscription/repo/pg"
 	"github.com/stemstr/storage/internal/waveform"
 )
 
@@ -77,6 +81,37 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Subscriptions setup
+	var lnProvider subscription.LNProvider
+	switch cfg.LightningProvider {
+	case "nodeless":
+		lnProvider, err = nodeless.New(cfg.NodelessAPIKey, cfg.NodelessStoreID, cfg.NodelessTestnet)
+		if err != nil {
+			log.Printf("nodeless err: %v\n", err)
+			os.Exit(1)
+		}
+	case "zbd":
+		lnProvider, err = zbd.New(cfg.ZBDAPIKey)
+		if err != nil {
+			log.Printf("zbd err: %v\n", err)
+			os.Exit(1)
+		}
+	default:
+		log.Printf("unknown lightning_provider %q. must be 'nodeless' or 'zbd'", cfg.LightningProvider)
+		os.Exit(1)
+	}
+
+	subRepo, err := pg.New(cfg.SubscriptionDB)
+	if err != nil {
+		log.Printf("subRepo err: %v\n", err)
+		os.Exit(1)
+	}
+	subService, err := subscription.New(subRepo, lnProvider, cfg.LightningProvider)
+	if err != nil {
+		log.Printf("subRepo err: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Service setup
 	var (
 		svcConfig = service.Config{
@@ -97,6 +132,7 @@ func main() {
 	h := handlers{
 		config: cfg,
 		svc:    svc,
+		subs:   subService,
 	}
 
 	r := chi.NewRouter()
@@ -113,6 +149,9 @@ func main() {
 
 	r.Get("/download/{filename}", h.handleDownloadMedia)
 	r.Get("/stream/{filename}", h.handleGetStream)
+	r.Get("/subscription", h.handleGetSubscriptionOptions)
+	r.Get("/subscription/{pubkey}", h.handleGetSubscription)
+	r.Post("/subscription/{pubkey}", h.handleCreateSubscription)
 	r.Post("/upload", h.handleUpload)
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 	r.Get("/debug/stream", h.handleDebugStream)
