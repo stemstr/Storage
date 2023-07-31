@@ -18,7 +18,7 @@ const (
 type Config struct {
 	// API settings
 	Port                   int      `yaml:"port" envconfig:"PORT"`
-	APIPath                string   `yaml:"api_path" envconfig:"API_PATH"`
+	APIBase                string   `yaml:"api_base" envconfig:"API_BASE"`
 	StreamBase             string   `yaml:"stream_base" envconfig:"STREAM_BASE"`
 	DownloadBase           string   `yaml:"download_base" envconfig:"DOWNLOAD_BASE"`
 	MediaStorageDir        string   `yaml:"media_storage_dir" envconfig:"MEDIA_STORAGE_DIR"`

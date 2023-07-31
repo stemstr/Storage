@@ -183,7 +183,18 @@ func (h *handlers) handleCreateSubscription(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonb)
 	return
+}
 
+func (h *handlers) handleCallbackZBDCharge(w http.ResponseWriter, r *http.Request) {
+	var m map[string]any
+	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		http.Error(w, "expected JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	jsonb, _ := json.Marshal(&m)
+	log.Printf("zbd callback: %s\n", jsonb)
+	w.WriteHeader(http.StatusOK)
 }
 
 // handleUpload handles user media uploads
