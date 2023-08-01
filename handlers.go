@@ -237,13 +237,11 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sub, err := h.subs.GetActiveSubscription(ctx, req.Pubkey)
-	if err != nil {
-		log.Printf("upload: subscription not found for %q, err: %v", req.Pubkey, err)
+	if _, err := h.subs.GetActiveSubscription(ctx, req.Pubkey); err != nil {
+		log.Printf("upload blocked: subscription not found for %q, err: %v", req.Pubkey, err)
 		http.Error(w, "Subscription required", http.StatusPaymentRequired)
 		return
 	}
-	log.Printf("upload: active sub: %#v\n", *sub)
 
 	sum := fmt.Sprintf("%x", sha256.Sum256(req.Data))
 	if req.Sum != sum {
