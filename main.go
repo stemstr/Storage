@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 
 	"github.com/go-chi/chi/v5"
@@ -91,7 +92,13 @@ func main() {
 			os.Exit(1)
 		}
 	case "zbd":
-		lnProvider, err = zbd.New(cfg.ZBDAPIKey)
+		chargeCallbackURL, err := url.JoinPath(cfg.APIBase, "/callback/zbd-charge")
+		if err != nil {
+			log.Printf("zbd chargeCallbackURL: %v\n", err)
+			os.Exit(1)
+		}
+
+		lnProvider, err = zbd.New(cfg.ZBDAPIKey, chargeCallbackURL)
 		if err != nil {
 			log.Printf("zbd err: %v\n", err)
 			os.Exit(1)
@@ -147,12 +154,13 @@ func main() {
 	}))
 	r.Use(metricsMiddleware)
 
+	r.Post("/upload", h.handleUpload)
 	r.Get("/download/{filename}", h.handleDownloadMedia)
 	r.Get("/stream/{filename}", h.handleGetStream)
 	r.Get("/subscription", h.handleGetSubscriptionOptions)
 	r.Get("/subscription/{pubkey}", h.handleGetSubscription)
 	r.Post("/subscription/{pubkey}", h.handleCreateSubscription)
-	r.Post("/upload", h.handleUpload)
+	r.Post("/callback/zbd-charge", h.handleCallbackZBDCharge)
 	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
 	r.Get("/debug/stream", h.handleDebugStream)
 

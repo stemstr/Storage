@@ -183,7 +183,43 @@ func (h *handlers) handleCreateSubscription(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonb)
 	return
+}
 
+func (h *handlers) handleCallbackZBDCharge(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Amount      string `json:"amount"`      // "1000000"
+		ConfirmedAt string `json:"confirmedAt"` // "2023-07-31T21:14:44.000Z"
+		CreatedAt   string `json:"createdAt"`   // "2023-07-31T21:14:33.184Z"
+		Description string `json:"description"` // "Stemstr 1 day subscription"
+		ExpiresAt   string `json:"expiresAt"`   // "2023-07-31T21:19:33.163Z"
+		ID          string `json:"id"`          // "077c6d70-421f-4a5c-9baa-85c80ec11ace"
+		InternalID  string `json:"internalId"`  // "0"
+		Invoice     struct {
+			Request string `json:"request"` // "lnbc10u1pjvsfpepp597...",
+			URI     string `json:"uri"`     // "lightning:lnbc10u1pj..."
+		} `json:"invoice"`
+		Status string `json:"status"` // "completed"
+		Unit   string `json:"unit"`   // "msats"
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "expected JSON payload", http.StatusBadRequest)
+		return
+	}
+
+	if data.Status == "completed" {
+		ctx := r.Context()
+		err := h.subs.UpdateInvoiceStatus(ctx, data.ID, subscription.StatusPaid)
+		if err != nil {
+			log.Printf("error: updateInvoiceStatus: invoice_id=%v err=%v", data.ID, err.Error())
+			http.Error(w, "unable to update invoice status", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("zbd: invoice paid! invoice_id=%v", data.ID)
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // handleUpload handles user media uploads

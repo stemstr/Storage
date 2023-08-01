@@ -11,14 +11,16 @@ import (
 	sub "github.com/stemstr/storage/internal/subscription"
 )
 
-func New(apiKey string) (*Client, error) {
+func New(apiKey, chargeCallbackURL string) (*Client, error) {
 	return &Client{
-		Client: zebedee.New(apiKey),
+		Client:            zebedee.New(apiKey),
+		chargeCallbackURL: chargeCallbackURL,
 	}, nil
 }
 
 type Client struct {
 	*zebedee.Client
+	chargeCallbackURL string
 }
 
 func (c *Client) CreateInvoice(ctx context.Context, s sub.Subscription) (*sub.Invoice, error) {
@@ -27,6 +29,7 @@ func (c *Client) CreateInvoice(ctx context.Context, s sub.Subscription) (*sub.In
 		Amount:      strconv.Itoa(s.Sats * 1000), // millisats
 		Description: fmt.Sprintf("Stemstr %d day subscription", s.Days),
 		ExpiresIn:   int64((time.Minute * 5).Seconds()),
+		CallbackURL: c.chargeCallbackURL,
 	})
 	if err != nil {
 		return nil, err

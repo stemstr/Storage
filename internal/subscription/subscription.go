@@ -24,6 +24,7 @@ type subscriptionRepo interface {
 	CreateSubscription(ctx context.Context, sub Subscription) (*Subscription, error)
 	GetActiveSubscriptions(ctx context.Context, pubkey string) ([]Subscription, error)
 	UpdateStatus(ctx context.Context, id int64, status SubscriptionStatus) error
+	UpdateStatusByInvoiceID(ctx context.Context, invoiceID string, status SubscriptionStatus) error
 }
 
 type LNProvider interface {
@@ -92,6 +93,10 @@ func (s *SubscriptionService) CreateSubscription(ctx context.Context, sub Subscr
 	}
 
 	return newSub, nil
+}
+
+func (s *SubscriptionService) UpdateInvoiceStatus(ctx context.Context, invoiceID string, status SubscriptionStatus) error {
+	return s.repo.UpdateStatusByInvoiceID(ctx, invoiceID, status)
 }
 
 type Subscription struct {
