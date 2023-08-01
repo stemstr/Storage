@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -16,14 +17,16 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/stemstr/storage/internal/mimes"
+	"github.com/stemstr/storage/internal/notifier"
 	"github.com/stemstr/storage/internal/service"
 	"github.com/stemstr/storage/internal/subscription"
 )
 
 type handlers struct {
-	config Config
-	svc    *service.Service
-	subs   *subscription.SubscriptionService
+	config   Config
+	svc      *service.Service
+	subs     *subscription.SubscriptionService
+	notifier *notifier.Notifier
 }
 
 // handleDownloadMedia fetches stored media
@@ -216,7 +219,7 @@ func (h *handlers) handleCallbackZBDCharge(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		log.Printf("zbd: invoice paid! invoice_id=%v", data.ID)
+		go h.notifier.Send(context.Background(), "new subscription")
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -293,6 +296,7 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	go h.notifier.Send(context.Background(), "new upload")
 	uploadCounter.Inc()
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)

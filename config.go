@@ -42,6 +42,7 @@ type Config struct {
 		Days int `yaml:"days" json:"days"`
 		Sats int `yaml:"sats" json:"sats"`
 	} `yaml:"subscription_options"`
+	NotifierNsec string `yaml:"notifier_nsec" envconfig:"NOTIFIER_NSEC"`
 }
 
 // Load Config from a yaml file at path.
