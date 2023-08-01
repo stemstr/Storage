@@ -16,6 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/stemstr/storage/internal/encoder"
+	"github.com/stemstr/storage/internal/notifier"
 	"github.com/stemstr/storage/internal/service"
 	blob "github.com/stemstr/storage/internal/storage/blob"
 	ls "github.com/stemstr/storage/internal/storage/filesystem"
@@ -137,9 +138,10 @@ func main() {
 	}
 
 	h := handlers{
-		config: cfg,
-		svc:    svc,
-		subs:   subService,
+		config:   cfg,
+		svc:      svc,
+		subs:     subService,
+		notifier: notifier.New(cfg.NotifierNsec),
 	}
 
 	r := chi.NewRouter()
