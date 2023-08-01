@@ -83,8 +83,6 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 			errs = append(errs, fmt.Errorf("encoder.HLS: %q: %w", resp.Output, err))
 		}
 
-		log.Printf("hls resp: %#v\n", resp)
-
 		// Upload to S3
 		if err := s.uploadHLSToS3(resp); err != nil {
 			errs = append(errs, fmt.Errorf("uploadHLSToS3: %w", err))
@@ -108,8 +106,6 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 		if err != nil {
 			errs = append(errs, fmt.Errorf("encoder.WAV: %q: %w", resp.Output, err))
 		}
-
-		log.Printf("wav resp: %#v\n", resp)
 
 		// Upload to S3
 		if err := s.uploadWAVToS3(resp); err != nil {
