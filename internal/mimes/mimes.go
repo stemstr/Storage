@@ -5,16 +5,18 @@ import (
 )
 
 type mime struct {
-	Mimetype       string
-	Extension      string
-	OtherMimetypes []string
+	Mimetype        string
+	Extension       string
+	OtherMimetypes  []string
+	OtherExtensions []string
 }
 
 var supportedMimes = []mime{
 	{
-		Mimetype:       "audio/aiff",
-		Extension:      ".aif",
-		OtherMimetypes: []string{"audio/x-aiff"},
+		Mimetype:        "audio/aiff",
+		Extension:       ".aif",
+		OtherMimetypes:  []string{"audio/x-aiff"},
+		OtherExtensions: []string{".aiff"},
 	},
 	{
 		Mimetype:       "audio/flac",
@@ -59,6 +61,11 @@ func FromFilename(name string) string {
 	for _, supported := range supportedMimes {
 		if strings.HasSuffix(name, supported.Extension) {
 			return supported.Mimetype
+		}
+		for _, otherExtension := range supported.OtherExtensions {
+			if strings.HasSuffix(name, otherExtension) {
+				return supported.Mimetype
+			}
 		}
 	}
 

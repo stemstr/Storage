@@ -40,6 +40,7 @@ func TestFromFilename(t *testing.T) {
 		expected string
 	}{
 		{"test.aif", "audio/aiff"},
+		{"test.aiff", "audio/aiff"},
 		{"test.flac", "audio/flac"},
 		{"test.mp3", "audio/mp3"},
 		{"test.m4a", "audio/mp4"},
