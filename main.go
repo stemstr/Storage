@@ -15,8 +15,8 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/stemstr/blastr"
 	"github.com/stemstr/storage/internal/encoder"
-	"github.com/stemstr/storage/internal/notifier"
 	"github.com/stemstr/storage/internal/service"
 	blob "github.com/stemstr/storage/internal/storage/blob"
 	ls "github.com/stemstr/storage/internal/storage/filesystem"
@@ -137,11 +137,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	noteBlastr, _ := blastr.New(cfg.BlastrNsec)
+
 	h := handlers{
-		config:   cfg,
-		svc:      svc,
-		subs:     subService,
-		notifier: notifier.New(cfg.NotifierNsec),
+		config: cfg,
+		svc:    svc,
+		subs:   subService,
+		blastr: noteBlastr,
 	}
 
 	r := chi.NewRouter()
