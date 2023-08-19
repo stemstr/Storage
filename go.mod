@@ -12,7 +12,6 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.2.0
-	github.com/nbd-wtf/go-nostr v0.19.5
 	github.com/nodeless-io/go-nodeless v0.1.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/stemstr/blastr v0.1.0
@@ -56,6 +55,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/nbd-wtf/go-nostr v0.19.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect

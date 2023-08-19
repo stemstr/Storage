@@ -21,6 +21,7 @@ import (
 	blob "github.com/stemstr/storage/internal/storage/blob"
 	ls "github.com/stemstr/storage/internal/storage/filesystem"
 	"github.com/stemstr/storage/internal/subscription"
+	mockln "github.com/stemstr/storage/internal/subscription/ln/mock"
 	"github.com/stemstr/storage/internal/subscription/ln/nodeless"
 	"github.com/stemstr/storage/internal/subscription/ln/zbd"
 	"github.com/stemstr/storage/internal/subscription/repo/pg"
@@ -104,6 +105,8 @@ func main() {
 			log.Printf("zbd err: %v\n", err)
 			os.Exit(1)
 		}
+	case "mock":
+		lnProvider = mockln.New()
 	default:
 		log.Printf("unknown lightning_provider %q. must be 'nodeless' or 'zbd'", cfg.LightningProvider)
 		os.Exit(1)
