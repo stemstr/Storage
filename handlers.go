@@ -292,9 +292,10 @@ func (h *handlers) handleUpload(w http.ResponseWriter, r *http.Request) {
 	downloadPath, _ := url.JoinPath(h.config.DownloadBase, resp.MediaID+".wav")
 
 	data, err := json.Marshal(map[string]any{
-		"stream_url":   streamPath,
-		"download_url": downloadPath,
-		"waveform":     resp.Waveform,
+		"stream_url":    streamPath,
+		"download_url":  downloadPath,
+		"download_hash": resp.DownloadHash,
+		"waveform":      resp.Waveform,
 	})
 
 	if err != nil {
