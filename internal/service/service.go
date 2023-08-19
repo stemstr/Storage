@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -48,8 +49,9 @@ type NewSampleRequest struct {
 }
 
 type NewSampleResponse struct {
-	MediaID  string
-	Waveform []int
+	DownloadHash string
+	MediaID      string
+	Waveform     []int
 }
 
 func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampleResponse, error) {
@@ -68,6 +70,8 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 		errs []error
 	)
 	wg.Add(2)
+
+	var wavHash string
 
 	// Encode and upload HLS
 	streamMediaPath := filepath.Join(s.cfg.StreamMediaLocalDir, streamFilename(r.Sum))
@@ -105,12 +109,20 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 		})
 		if err != nil {
 			errs = append(errs, fmt.Errorf("encoder.WAV: %q: %w", resp.Output, err))
+			return
 		}
 
 		// Upload to S3
 		if err := s.uploadWAVToS3(resp); err != nil {
 			errs = append(errs, fmt.Errorf("uploadWAVToS3: %w", err))
 		}
+
+		// Hash the new wav file
+		wavData, err := s.ls.Read(ctx, resp.Filepath)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("could not read downloadfile for hashing: %w", err))
+		}
+		wavHash = fmt.Sprintf("%x", sha256.Sum256(wavData))
 
 		tmpFiles = append(tmpFiles, resp.Filepath)
 
@@ -133,8 +145,9 @@ func (s *Service) NewSample(ctx context.Context, r *NewSampleRequest) (*NewSampl
 	log.Printf("upload: %v created %v\n", r.Pubkey, r.Mimetype)
 
 	return &NewSampleResponse{
-		MediaID:  r.Sum,
-		Waveform: waveform,
+		DownloadHash: wavHash,
+		MediaID:      r.Sum,
+		Waveform:     waveform,
 	}, nil
 }
 
